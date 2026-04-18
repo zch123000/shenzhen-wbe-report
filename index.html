@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深圳市污水流行病学新冠核酸检测 — 数据分析报告</title>
+  <script src="js/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/leaflet.css">
+  <script src="js/leaflet.js"></script>
+<style>
+  /* ════════════════════════════════════════════════════════
+     ACADEMIC RESEARCH REPORT — DESIGN SYSTEM
+     Inspired by Nature / Science / Lancet visual language
+  ════════════════════════════════════════════════════════ */
+  :root {
+    --ink:           #1a1a2e;
+    --ink-soft:      #333344;
+    --muted:         #6b7280;
+    --faint:         #9ca3af;
+    --paper:         #ffffff;
+    --paper-warm:    #fafbfC;
+    --canvas:        #f4f5f7;
+    --line:          #e2e4e9;
+    --line-light:    #eceef3;
+    --accent:        #1b4d89;       /* Deep navy — primary academic */
+    --accent-dark:   #0d334f;
+    --highlight:     #c0392b;       /* Red emphasis */
+    --positive:      #1a6b45;       /* Green */
+    --warn:          #a16207;
+    --secondary:     #2563eb;       /* Secondary blue (map play button / slider) */
+    --text:          #1f2937;       /* Primary body text */
+    --border:        #d1d5db;       /* Default border */
+    --primary:       #1b4d89;       /* Primary accent */
+    --warning:       #a16207;       /* Warning amber */
+    --chart-blue:    #2563eb;
+    --chart-red:     #dc2626;
+    --chart-green:   #16a34a;
+    --chart-orange:  #ea580c;
+    --chart-purple:  #7c3aed;
+    --chart-cyan:    #0891b2;
+    --shadow-xs:     0 1px 2px rgba(0,0,0,.04);
+    --shadow-sm:     0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.03);
+    --shadow-md:     0 4px 12px rgba(0,0,0,.06);
+  }
+
+  /* ════════════════════════════════════════════════════════
+     DARK THEME OVERRIDES
+  ════════════════════════════════════════════════════════ */
+  [data-theme="dark"] {
+    --ink:           #e2e4f0;
+    --ink-soft:      #c8cce0;
+    --muted:         #8b90a8;
+    --faint:         #5a5e7a;
+    --paper:         #1c1d2e;
+    --paper-warm:    #222438;
+    --canvas:        #141520;
+    --line:          #2d2e48;
+    --line-light:    #252640;
+    --accent:        #5b9bd5;
+    --accent-dark:   #7ab3e0;
+    --highlight:     #e07070;
+    --positive:      #5dbb8a;
+    --warn:          #d4a84b;
+    --chart-blue:    #5b9bd5;
+    --chart-red:     #e07070;
+    --chart-green:   #5dbb8a;
+    --chart-orange:  #e09050;
+    --chart-purple:  #9b80e0;
+    --chart-cyan:    #50c8d4;
+    --shadow-xs:     0 1px 2px rgba(0,0,0,.3);
+    --shadow-sm:     0 1px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.2);
+    --shadow-md:     0 4px 12px rgba(0,0,0,.3);
+  }
+  [data-theme="dark"] .banner { background: #0d0e1a; }
+  [data-theme="dark"] .banner::after { opacity: .7; }
+  [data-theme="dark"] .kpi-badge { background: rgba(91,155,213,.15); color: var(--accent); }
+  [data-theme="dark"] .data-table thead td { background: var(--paper-warm); color: var(--ink-soft); }
+  [data-theme="dark"] .data-table tbody tr:nth-child(even) td { background: var(--paper-warm); }
+  [data-theme="dark"] .data-table tbody tr:hover td { background: rgba(91,155,213,.08); }
+  [data-theme="dark"] .reagent-table th { background: var(--paper-warm); }
+  [data-theme="dark"] .reagent-table tr:nth-child(even) td { background: var(--paper-warm); }
+  [data-theme="dark"] .method-card { background: var(--paper-warm); }
+  [data-theme="dark"] .method-card h4 { color: var(--ink-soft); }
+  [data-theme="dark"] .insight-body { color: var(--muted); }
+  [data-theme="dark"] .insight-icon { color: var(--accent); opacity: .8; border-color: var(--accent); }
+  [data-theme="dark"] .insight-title { color: var(--ink-soft); }
+  [data-theme="dark"] .tab-btn { background: var(--paper); border-color: var(--line); color: var(--muted); }
+  [data-theme="dark"] .tab-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+  [data-theme="dark"] .tab-btn.active { background: var(--accent); color: #0d0e1a; }
+  [data-theme="dark"] .pcr-param { background: var(--paper-warm); border-color: var(--line); }
+  [data-theme="dark"] .pcr-param .pval { color: var(--accent); }
+  [data-theme="dark"] .note-box { background: rgba(91,155,213,.06); border-left-color: var(--warn); color: var(--muted); }
+  /* IC Note 内联样式覆盖（data-i18n="ic_note" 无 class） */
+  [data-theme="dark"] [data-i18n="ic_note"] {
+    background: rgba(91,155,213,.08) !important;
+    border-color: var(--warn) !important;
+    color: #b0b4c8 !important;
+  }
+  [data-theme="dark"] [data-i18n="ic_note"] b {
+    color: #c8d4e8 !important;
+  }
+  [data-theme="dark"] .kpi-card:hover { border-color: var(--accent); }
+  [data-theme="dark"] .method-card:hover { border-color: var(--accent); }
+  [data-theme="dark"] .lang-btn { background: rgba(28,29,46,.92); border-color: var(--line); }
+  [data-theme="dark"] .lang-btn button:hover:not(.active) { background: var(--paper-warm); color: var(--accent); }
+  [data-theme="dark"] .lang-btn .divider { background: var(--line); }
+  [data-theme="dark"] .leaflet-container { background: #1c1d2e; }
+  [data-theme="dark"] .map-container { background: #1c1d2e; }
+  [data-theme="dark"] .map-legend-box { background: rgba(28,29,46,.92); border-color: var(--line); }
+
+  /* ── DARK MODE: ALL TEXT OVERRIDES ── */
+  [data-theme="dark"] h1,
+  [data-theme="dark"] h2,
+  [data-theme="dark"] h3,
+  [data-theme="dark"] h4,
+  [data-theme="dark"] .section-title,
+  [data-theme="dark"] .insight-title,
+  [data-theme="dark"] .insight-body,
+  [data-theme="dark"] .method-card,
+  [data-theme="dark"] .method-card h4,
+  [data-theme="dark"] .step-label,
+  [data-theme="dark"] .step-desc,
+  [data-theme="dark"] .panel,
+  [data-theme="dark"] .note-box,
+  [data-theme="dark"] p,
+  [data-theme="dark"] li,
+  [data-theme="dark"] td,
+  [data-theme="dark"] th,
+  [data-theme="dark"] .result-box,
+  [data-theme="dark"] .detection-limit,
+  [data-theme="dark"] .result-chip .rlab,
+  [data-theme="dark"] .enrich-step .step-label,
+  [data-theme="dark"] .enrich-step .step-desc,
+  [data-theme="dark"] .kpi-card,
+  [data-theme="dark"] .tab-content {
+    color: #e8eaf6 !important;
+  }
+  [data-theme="dark"] .insight-body,
+  [data-theme="dark"] .note-box,
+  [data-theme="dark"] .step-desc,
+  [data-theme="dark"] .enrich-step .step-desc,
+  [data-theme="dark"] .note-box p {
+    color: #b0b4c8 !important;
+  }
+  [data-theme="dark"] .tab-btn {
+    background: #1c1d2e;
+    border: 1.5px solid #2d2e48;
+    color: #8b90a8;
+  }
+  [data-theme="dark"] .tab-btn:hover:not(.active) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  [data-theme="dark"] .tab-btn.active {
+    background: var(--accent);
+    color: #0d0e1a;
+  }
+  [data-theme="dark"] .map-month-label {
+    color: var(--accent) !important;
+  }
+  /* Reset 按钮内联 background:#fff 覆盖 */
+  [data-theme="dark"] button[data-i18n="map_reset"] {
+    background: #222438 !important;
+    color: #8b90a8 !important;
+    border-color: #2d2e48 !important;
+  }
+  [data-theme="dark"] button[data-i18n="map_reset"]:hover {
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+  }
+  /* Play 按钮在深色背景上保持高对比 */
+  [data-theme="dark"] button[data-i18n="map_play"],
+  [data-theme="dark"] button[data-i18n="map_pause"] {
+    background: var(--accent) !important;
+    color: #0d0e1a !important;
+    border-color: var(--accent) !important;
+  }
+  /* Footer 深色模式 */
+  [data-theme="dark"] .footer {
+    color: #8b90a8;
+    border-top-color: #2d2e48;
+  }
+
+  /* ── Classification badge 深色模式 ── */
+  [data-theme="dark"] .badge-high {
+    background: rgba(220,38,38,.2) !important;
+    color: #fca5a5 !important;
+    border-color: rgba(220,38,38,.4) !important;
+  }
+  [data-theme="dark"] .badge-med {
+    background: rgba(180,120,20,.2) !important;
+    color: #fcd34d !important;
+    border-color: rgba(180,120,20,.4) !important;
+  }
+  [data-theme="dark"] .badge-low {
+    background: rgba(22,101,52,.2) !important;
+    color: #86efac !important;
+    border-color: rgba(22,101,52,.4) !important;
+  }
+  [data-theme="dark"] .badge-neg {
+    background: rgba(71,85,105,.2) !important;
+    color: #cbd5e1 !important;
+    border-color: rgba(71,85,105,.4) !important;
+  }
+  [data-theme="dark"] [data-i18n="cls_ic"] {
+    background: rgba(108,52,131,.25) !important;
+    color: #d8b4fe !important;
+    border-color: rgba(108,52,131,.4) !important;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Times New Roman', 'Noto Serif', 'STSong', 'SimSun', serif;
+    font-size: 16px; line-height: 1.72;
+    color: var(--ink); background: var(--canvas);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* FOUC prevention: hide until i18n is applied */
+    visibility: hidden;
+  }
+  body.i18n-ready {
+    visibility: visible;
+  }
+
+  /* ── LANG TOGGLE (minimal, top-right) ── */
+  .lang-btn {
+    position: fixed; top: 16px; right: 20px; z-index: 999;
+    display: flex; align-items: center; gap: 0;
+    background: rgba(255,255,255,.92); border: 1px solid var(--line);
+    border-radius: 6px; overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(8px);
+  }
+  .lang-btn button {
+    padding: 5px 14px; font-size: 12px; font-weight: 600;
+    border: none; cursor: pointer; transition: all .15s ease;
+    background: transparent; color: var(--muted);
+    font-family: inherit;
+    letter-spacing: .2px;
+  }
+  .lang-btn button.active {
+    background: var(--accent); color: #fff;
+  }
+  .lang-btn button:hover:not(.active) { color: var(--accent); background: #f0f3f7; }
+  .lang-btn .divider { width: 1px; height: 16px; background: var(--line); }
+
+  /* ── HEADER BANNER (clean, academic) ── */
+  .banner {
+    background: var(--ink);
+    color: #e8eaf0; padding: 36px 48px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .banner::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--chart-green) 50%, var(--chart-cyan) 100%);
+  }
+  .banner h1 {
+    font-size: 28px; font-weight: 700; line-height: 1.35;
+    margin-bottom: 10px; letter-spacing: .3px;
+    max-width: 900px;
+  }
+  .banner p {
+    font-size: 15px; opacity: .78; max-width: 850px;
+    font-style: italic;
+  }
+  .banner .meta {
+    display: flex; gap: 32px; margin-top: 18px; font-size: 13px;
+    opacity: .72; flex-wrap: wrap; letter-spacing: .15px;
+  }
+  .banner .meta span { position: relative; padding-left: 10px; }
+  .banner .meta span::before {
+    content: '·'; position: absolute; left: 0; color: var(--accent);
+    font-weight: 700; font-size: 14px; top: -2px;
+  }
+
+  /* ── LAYOUT CONTAINER ── */
+  .container { max-width: 1240px; margin: 0 auto; padding: 32px 36px; }
+
+  /* ── SECTION TITLES (academic heading style) ── */
+  .section-title {
+    font-size: 17px; font-weight: 700; color: var(--ink);
+    margin: 38px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1.5px solid var(--line);
+    display: flex; align-items: center; gap: 8px;
+    letter-spacing: .25px;
+  }
+  .section-title .sec-icon {
+    width: 18px; height: 18px; border-radius: 3px;
+    background: var(--accent); color: #fff;
+    font-size: 11px; display: inline-flex; align-items: center;
+    justify-content: center; flex-shrink: 0; line-height: 1;
+  }
+
+  /* ── KPI CARDS (minimalist data cards) ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 4px; }
+  .kpi-card {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 4px; padding: 22px 24px;
+    box-shadow: var(--shadow-xs);
+    transition: border-color .2s, box-shadow .2s;
+    position: relative;
+  }
+  .kpi-card:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+  .kpi-card.danger  { border-left: 3px solid var(--highlight); }
+  .kpi-card.success { border-left: 3px solid var(--positive); }
+  .kpi-card.warn    { border-left: 3px solid var(--warn); }
+  .kpi-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .7px; font-weight: 600; }
+  .kpi-value { font-size: 32px; font-weight: 700; color: var(--ink); line-height: 1.1; }
+  .kpi-sub   { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .kpi-badge { display:inline-block; font-size:11px; background:#f0f4fa; color:var(--accent); border-radius:3px; padding:3px 10px; margin-top:6px; font-weight:600; letter-spacing:.15px;}
+
+  /* ── GRID LAYOUTS ── */
+  .grid-2  { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .grid-32 { display: grid; grid-template-columns: 3fr 2fr; gap: 20px; }
+
+  /* ── CHART PANELS (clean paper-like) ── */
+  .panel {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 4px; padding: 22px 24px;
+    box-shadow: var(--shadow-xs);
+  }
+  .panel:hover { box-shadow: var(--shadow-sm); transition: box-shadow .2s; }
+  .panel h3 { font-size: 15px; font-weight: 700; color: var(--ink-soft); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--line-light); line-height: 1.4; }
+  .chart-wrap      { position: relative; height: 290px; }
+  .chart-wrap-tall { position: relative; height: 350px; }
+
+  /* ── TABLES (classic academic style) ── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.6; }
+  .data-table th {
+    background: var(--paper-warm); color: var(--ink-soft); font-weight: 700;
+    padding: 9px 12px; text-align: left; border-bottom: 2px solid var(--ink);
+    letter-spacing: .15px; font-size: 12px;
+  }
+  .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:nth-child(even) td { background: var(--paper-warm); }
+  .badge { display:inline-block; padding:3px 9px; border-radius:3px; font-size:11px; font-weight:700; letter-spacing:.1px; }
+  .badge-high   { background:#fef2f2; color:#991b1b; border: 1px solid #fecaca;}
+  .badge-med    { background:#fffbeb; color:#92400e; border: 1px solid #fde68a; }
+  .badge-low    { background:#f0fdf4; color:#166534; border: 1px solid #bbf7d0; }
+  .badge-neg    { background:#f8fafc; color:#475569; border: 1px solid #e2e8f0; }
+
+  /* ── INSIGHT CARDS (research findings style) ── */
+  .insights { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 4px; }
+  .insight-card {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 4px; padding: 20px 22px;
+    box-shadow: var(--shadow-xs);
+    position: relative;
+  }
+  .insight-card::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 100%; height: 3px; border-radius: 4px 4px 0 0;
+  }
+  .insight-card.red::before   { background: var(--highlight); }
+  .insight-card.green::before { background: var(--positive); }
+  .insight-card.amber::before { background: var(--warn); }
+  .insight-icon  { font-size: 12px; font-weight: 700; margin-bottom: 10px; color: var(--accent); opacity: .6; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .insight-title { font-size: 14px; font-weight: 700; color: var(--ink-soft); margin-bottom: 8px; line-height: 1.4; letter-spacing: .1px; }
+  .insight-body  { font-size: 13px; color: var(--muted); line-height: 1.7; }
+
+  /* ── METHODS SECTION (structured protocol layout) ── */
+  .method-section {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 4px; padding: 30px 36px;
+    box-shadow: var(--shadow-xs); margin-bottom: 20px;
+  }
+  .method-section h2 {
+    font-size: 18px; font-weight: 700; color: var(--ink);
+    margin-bottom: 22px; padding-bottom: 10px;
+    border-bottom: 1.5px solid var(--line);
+    letter-spacing: .2px;
+  }
+  .step-flow { display: flex; gap: 0; margin: 20px 0; overflow-x: auto; }
+  .step-item { flex: 1; min-width: 110px; text-align: center; position: relative; }
+  .step-item:not(:last-child)::after { content: ''; position: absolute; right: -10px; top: 16px; width: 20px; height: 2px; background: var(--line); }
+  .step-num {
+    width: 34px; height: 34px; border-radius: 4px;
+    background: var(--accent); color: #fff; font-weight: 700;
+    font-size: 14px; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px; letter-spacing: -.3px;
+  }
+  .step-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); margin-bottom: 4px; letter-spacing: .1px; }
+  .step-detail { font-size: 11px; color: var(--muted); line-height: 1.5; padding: 0 4px; }
+  .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+  .method-card {
+    border-radius: 4px; padding: 18px 20px;
+    border: 1px solid var(--line); background: var(--paper-warm);
+    transition: border-color .15s;
+  }
+  .method-card:hover { border-color: var(--accent); }
+  .method-card.amber { border-left: 3px solid var(--warn); }
+  .method-card.green { border-left: 3px solid var(--positive); }
+  .method-card.red   { border-left: 3px solid var(--highlight); }
+  .method-card h4 { font-size: 15px; font-weight: 700; color: var(--ink-soft); margin-bottom: 10px; letter-spacing: .1px; }
+  .method-card p, .method-card li { font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .method-card ul { padding-left: 18px; margin-top: 8px; }
+  .method-card li { margin-bottom: 4px; }
+  .reagent-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; line-height: 1.6; }
+  .reagent-table th { background: var(--paper-warm); color: var(--ink-soft); font-weight: 700; padding: 8px 12px; border-bottom: 2px solid var(--line); text-align: left; letter-spacing: .1px; }
+  .reagent-table td { padding: 7px 12px; border-bottom: 1px solid var(--line-light); vertical-align: top; }
+  .reagent-table tr:nth-child(even) td { background: var(--paper-warm); }
+  .result-box {
+    background: var(--paper-warm); border-radius: 4px;
+    padding: 22px 26px; margin-top: 18px; border: 1px solid var(--line);
+  }
+  .result-box h4 { font-size: 15px; font-weight: 700; color: var(--positive); margin-bottom: 12px; letter-spacing: .1px; }
+  .result-highlight { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+  .result-chip {
+    background: var(--paper); border-radius: 4px; padding: 14px 20px; text-align: center;
+    box-shadow: var(--shadow-sm); min-width: 130px; border: 1px solid var(--line);
+  }
+  .result-chip .rval { font-size: 24px; font-weight: 700; color: var(--positive); letter-spacing: -.5px; }
+  .result-chip .rlab { font-size: 11px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+  .tab-btn { display:inline-block; padding:7px 18px; border-radius:3px; font-size:13px; font-weight:600; cursor:pointer; border:1.5px solid var(--line); background:var(--paper); color:var(--muted); margin-right:6px; margin-bottom:14px; transition:all .15s; letter-spacing:.1px; }
+  .tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tab-btn:hover:not(.active) { border-color:var(--accent); color:var(--accent); }
+  .method-tab { display:none; }
+  .method-tab.active { display:block; }
+
+  /* ── MAP & LEAFLET OVERRIDES ── */
+  .leaflet-container { font-family: 'Times New Roman','Noto Serif',serif; border-radius: 4px; }
+  .leaflet-district-tooltip {
+    background: rgba(27,77,137,.94); color: #fff; border: none;
+    border-radius: 4px; font-size: 13px; font-weight: 600;
+    padding: 5px 12px; font-family: inherit;
+    box-shadow: var(--shadow-md); letter-spacing: .05px;
+  }
+  .leaflet-district-tooltip::before { display: none; }
+  .leaflet-control-attribution { font-size: 10px; font-family: 'Times New Roman',serif; }
+  .leaflet-control-zoom a { font-family: inherit; font-weight: 700; border-radius: 3px !important; }
+
+  /* ── PCR PARAMS GRID ── */
+  .pcr-params { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+  .pcr-param { background: var(--paper-warm); border-radius: 4px; padding: 14px; text-align: center; border: 1px solid var(--line); }
+  .pcr-param .pval { font-size: 22px; font-weight: 700; color: var(--accent); letter-spacing: -.3px; }
+  .pcr-param .plab { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+
+  /* ── DETECTION LIMIT BOX ── */
+  .detection-limit {
+    background: var(--paper-warm); border-left: 3px solid var(--warn);
+    border-radius: 4px; padding: 16px 20px; margin-top: 16px; border-right: 1px solid var(--line); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  .detection-limit strong { color: var(--ink-soft); font-size: 15px; }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center; padding: 28px; font-size: 12px;
+    color: var(--muted); border-top: 1px solid var(--line);
+    margin-top: 44px; letter-spacing: .15px; line-height: 1.6;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .kpi-grid,.grid-2,.grid-3,.grid-32,.insights { grid-template-columns: 1fr 1fr; }
+    .banner { padding: 28px 28px 22px; }
+    .container { padding: 24px 24px; }
+    body { font-size: 15px; }
+  }
+  @media (max-width: 600px) {
+    .kpi-grid,.grid-2,.grid-3,.grid-32,.insights { grid-template-columns: 1fr; }
+    .container { padding: 16px; }
+    .banner h1 { font-size: 22px; }
+    .banner .meta { gap: 18px; }
+    body { font-size: 14px; }
+  }
+</style>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== LANG TOGGLE + DARK MODE ===== -->
+<div class="lang-btn">
+  <button id="btnDark" title="Toggle dark/light mode" onclick="toggleDark()" style="padding:5px 10px;font-size:11px;font-weight:600;border:none;cursor:pointer;transition:all .15s ease;background:transparent;color:var(--muted);font-family:inherit;letter-spacing:.2px;">🌙</button>
+  <div class="divider"></div>
+  <button id="btnEN" class="active" onclick="setLang('en')">EN</button>
+  <div class="divider"></div>
+  <button id="btnZH" onclick="setLang('zh')">中文</button>
+  <div class="divider"></div>
+  <button id="btnJA" onclick="setLang('ja')">日本語</button>
+</div>
+
+<!-- ===== BANNER ===== -->
+<div class="banner">
+  <h1 data-i18n="title">Shenzhen Wastewater-Based Epidemiology (WBE) SARS-CoV-2 qPCR Data Analysis Report</h1>
+  <p data-i18n="subtitle">Comprehensive Statistical Analysis of PCR Test Results from 2,039 Wastewater Samples · SLAN-96P qPCR Platform · Four-in-One Magnetic Bead Enrichment Extraction Method</p>
+  <div class="meta">
+    <span data-i18n="meta1">Testing Period: Oct 2022 – Aug 2023</span>
+    <span data-i18n="meta2">Coverage: Pingshan / Futian / Luohu Districts, Shenzhen</span>
+    <span data-i18n="meta3">Targets: N Gene (HEX) · ORF1ab (FAM) · Internal Control IC (CY5)</span>
+    <span data-i18n="meta4">Positive Threshold: Ct &lt; 37 (Strict) / Ct &lt; 40 (Relaxed)</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- KPI -->
+  <div class="section-title"><span class="sec-icon">1</span><span data-i18n="sec_kpi">Key Detection Metrics</span></div>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label" data-i18n="kpi1_label">Total Samples Collected</div>
+      <div class="kpi-value">2,039</div>
+      <div class="kpi-sub" data-i18n="kpi1_sub">Valid: 1,123 samples (55.1%)</div>
+      <div class="kpi-badge">2022-10 → 2023-08</div>
+    </div>
+    <div class="kpi-card success">
+      <div class="kpi-label" data-i18n="kpi2_label">N Gene Detection Rate (Ct &lt; 40)</div>
+      <div class="kpi-value">55.4%</div>
+      <div class="kpi-sub" data-i18n="kpi2_sub">622/1123 detected · Mean Ct = 35.18</div>
+      <div class="kpi-badge" data-i18n="kpi2_badge">Strict Positive (Ct&lt;37): 36.4%</div>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label" data-i18n="kpi3_label">ORF1ab Detection Rate (Ct &lt; 40)</div>
+      <div class="kpi-value">33.1%</div>
+      <div class="kpi-sub" data-i18n="kpi3_sub">372/1123 detected · Mean Ct = 34.87</div>
+      <div class="kpi-badge" data-i18n="kpi3_badge">Strict Positive (Ct&lt;37): 20.2%</div>
+    </div>
+    <div class="kpi-card danger">
+      <div class="kpi-label" data-i18n="kpi4_label">Dual-Target Positive Rate (Ct &lt; 37)</div>
+      <div class="kpi-value">16.8%</div>
+      <div class="kpi-sub" data-i18n="kpi4_sub">189/1123 dual-target positive</div>
+      <div class="kpi-badge" data-i18n="kpi4_badge">IC Pass Rate: 74.8%</div>
+    </div>
+  </div>
+
+  <!-- 时间分析 -->
+  <div class="section-title"><span class="sec-icon">2</span><span data-i18n="sec_time">Temporal Analysis</span></div>
+  <div class="grid-32">
+    <div class="panel">
+      <h3 data-i18n="chart_trend_title">Monthly Detection Positive Rate Trend (N Gene / ORF1ab / Dual Target)</h3>
+      <div class="chart-wrap-tall"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3 data-i18n="chart_count_title">Monthly Sample Volume Distribution</h3>
+      <div class="chart-wrap-tall"><canvas id="sampleCountChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 地区分析 -->
+  <div class="section-title"><span class="sec-icon">3</span><span data-i18n="sec_region">Geographic & Sampling Site Analysis</span></div>
+  <div class="grid-3">
+    <div class="panel">
+      <h3 data-i18n="chart_pie_title">Three-District Sample Distribution</h3>
+      <div class="chart-wrap"><canvas id="regionPieChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3 data-i18n="chart_rbar_title">District Positive Rate Comparison (Ct&lt;37)</h3>
+      <div class="chart-wrap"><canvas id="regionBarChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3 data-i18n="chart_cross_title">District × Monthly Dual-Target Positive Rate Trend</h3>
+      <div class="chart-wrap"><canvas id="crossChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Ct分布 -->
+  <div class="section-title"><span class="sec-icon">4</span><span data-i18n="sec_ct">Ct Value Distribution & Dual-Target Correlation</span></div>
+  <div class="grid-2">
+    <div class="panel">
+      <h3 data-i18n="chart_hist_title">N Gene Ct Value Frequency Distribution</h3>
+      <div class="chart-wrap"><canvas id="ctHistN"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3 data-i18n="chart_scatter_title">N Gene vs ORF1ab Ct Value Correlation Scatter Plot</h3>
+      <div class="chart-wrap"><canvas id="corrScatter"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 样本分类 -->
+  <div class="section-title"><span class="sec-icon">5</span><span data-i18n="sec_class">Sample Positivity Classification</span></div>
+  <div class="grid-2">
+    <div class="panel">
+      <h3 data-i18n="chart_donut_title">Sample Positivity Classification Composition</h3>
+      <div class="chart-wrap"><canvas id="classDonut"></canvas></div>
+    </div>
+    <div class="panel">
+      <h3 data-i18n="class_table_title">Sample Classification Details</h3>
+      <table class="data-table" style="margin-top:8px">
+        <thead>
+          <tr>
+            <th data-i18n="th_class">Classification</th>
+            <th data-i18n="th_count">Count</th>
+            <th data-i18n="th_pct">Percentage</th>
+            <th data-i18n="th_criterion">Criterion</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-high" data-i18n="cls_high">High Positive</span></td>
+            <td>170</td><td>15.1%</td>
+            <td data-i18n="cls_high_crit">Both targets Ct &lt; 37</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-med" data-i18n="cls_med">Medium Positive</span></td>
+            <td>160</td><td>14.3%</td>
+            <td data-i18n="cls_med_crit">Single target Ct &lt; 37</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-low" data-i18n="cls_low">Low Positive</span></td>
+            <td>116</td><td>10.3%</td>
+            <td data-i18n="cls_low_crit">Any target Ct 37-40</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-neg" data-i18n="cls_neg">Negative</span></td>
+            <td>394</td><td>35.1%</td>
+            <td data-i18n="cls_neg_crit">No amplification in all targets</td>
+          </tr>
+          <tr>
+            <td><span class="badge" style="background:#f0e6ff;color:#6c3483;" data-i18n="cls_ic">IC Failure</span></td>
+            <td>283</td><td>25.2%</td>
+            <td data-i18n="cls_ic_crit">IC Ct ≥ 40 or No Ct</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:14px;padding:10px 14px;background:#eaf4fb;border-radius:4px;font-size:12px;color:var(--ink-soft);border:1px solid var(--line);" data-i18n="ic_note">
+        <b>内标说明：</b>内标（IC）用于监测提取抑制和操作失误。IC 失败率 25.2% 提示部分污水样本含有 PCR 抑制物，为污水基质检测的固有挑战。
+      </div>
+    </div>
+  </div>
+
+  <!-- 采样点表 -->
+  <div class="section-title"><span class="sec-icon">6</span><span data-i18n="sec_sites">Key Sampling Site Statistics</span></div>
+  <div class="panel">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-i18n="th_site">Sampling Site</th>
+          <th data-i18n="th_region">District</th>
+          <th data-i18n="th_n">Sample Count</th>
+          <th data-i18n="th_npos">N Positive Rate</th>
+          <th data-i18n="th_opos">O Positive Rate</th>
+          <th data-i18n="th_dual">Dual-Target Positive Rate</th>
+          <th data-i18n="th_nct">N Mean Ct</th>
+          <th data-i18n="th_oct">O Mean Ct</th>
+          <th data-i18n="th_risk">Risk Level</th>
+        </tr>
+      </thead>
+      <tbody id="siteTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- 关键洞察 -->
+  <div class="section-title"><span class="sec-icon">7</span><span data-i18n="sec_insights">Key Findings & Scientific Insights</span></div>
+  <div class="insights">
+    <div class="insight-card green">
+      <div class="insight-icon">1</div>
+      <div class="insight-title" data-i18n="ins1_title">Clear Inflection Point in Epidemic Decline (Oct 2022 → Apr 2023)</div>
+      <div class="insight-body" data-i18n="ins1_body">Dual-target positive rate declined continuously from the Oct 2022 peak of <b>38.7%</b> to <b>0%</b> in May–Aug 2023, perfectly tracing the Omicron epidemic recession curve. April 2023 had the largest sample volume (552), yet maintained a 15.9% dual-target rate.</div>
+    </div>
+    <div class="insight-card amber">
+      <div class="insight-icon">2</div>
+      <div class="insight-title" data-i18n="ins2_title">Stronger Early Epidemic Signal in Luohu District</div>
+      <div class="insight-body" data-i18n="ins2_body">Luohu District showed higher dual-target positive rates in October (42.9%) and December (39.3%) 2022 compared to Futian (35.3% / 11.1%), indicating Luohu as an early-warning sentinel has priority monitoring value. Futian spiked to 37% in January 2023, slightly later than Luohu.</div>
+    </div>
+    <div class="insight-card green">
+      <div class="insight-icon">3</div>
+      <div class="insight-title" data-i18n="ins3_title">N Gene Is More Sensitive Than ORF1ab</div>
+      <div class="insight-body" data-i18n="ins3_body">N gene detection rate (55.4%) significantly exceeds ORF1ab (33.1%). Among positive samples, mean N Ct = 35.18, ORF1ab = 34.87, with high correlation (r ≈ 0.92). N gene is optimal as the primary screening target.</div>
+    </div>
+    <div class="insight-card amber">
+      <div class="insight-icon">4</div>
+      <div class="insight-title" data-i18n="ins4_title">Median Ct Values Reveal Low Viral Load</div>
+      <div class="insight-body" data-i18n="ins4_body">N gene Ct median = <b>36.3</b> (range 6.9–44.7); 75th percentile at 38.7, indicating generally low virus concentration near the detection limit — consistent with high dilution in wastewater matrices.</div>
+    </div>
+    <div class="insight-card green">
+      <div class="insight-icon">5</div>
+      <div class="insight-title" data-i18n="ins5_title">High Positive Rate at Water Treatment Plant</div>
+      <div class="insight-body" data-i18n="ins5_body">Binhe Water Treatment Plant (21.8%), Futian Bonded Area Pump Station (20.8%), and Huanggang Street (20.0%) show the highest dual-target positive rates, consistent with the principle that wastewater treatment plants aggregate upstream population and amplify viral signals.</div>
+    </div>
+    <div class="insight-card amber">
+      <div class="insight-icon">6</div>
+      <div class="insight-title" data-i18n="ins6_title">IC Failure Rate Requires Attention (25.2%)</div>
+      <div class="insight-body" data-i18n="ins6_body">IC pass rate is only 74.8%, dropping to 33-39% during May-July 2023, suggesting high-concentration PCR inhibitors or reduced extraction efficiency. Magnetic bead enrichment preprocessing has key value in addressing this issue.</div>
+    </div>
+  </div>
+
+  <!-- 方法论 -->
+  <div class="section-title"><span class="sec-icon">8</span><span data-i18n="sec_method">Detection Methods & Quality Control</span></div>
+  <div class="panel" style="font-size:12px;line-height:1.8;color:var(--text);">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
+      <div>
+        <b style="color:var(--ink-soft);" data-i18n="method1_title">样本采集</b><br>
+        <span data-i18n="method1_body">Wastewater samples were collected from pumping stations and water treatment plants in Pingshan, Futian, and Luohu districts of Shenzhen, with a volume of 1000 µL. Pre-treatment was performed using the four-in-one one-step magnetic bead enrichment extraction method (TM-ZCH protocol), effectively removing inhibitors and concentrating viral nucleic acids.</span>
+      </div>
+      <div>
+        <b style="color:var(--ink-soft);" data-i18n="method2_title">PCR 检测</b><br>
+        <span data-i18n="method2_body">Instrument: SLAN-96P real-time qPCR system<br>Targets: FAM → ORF1ab · HEX → N gene · CY5 → Internal Control<br>Thresholds: Ct &lt; 37 (strong positive) / Ct &lt; 40 (weak positive)</span>
+      </div>
+      <div>
+        <b style="color:var(--ink-soft);" data-i18n="method3_title">数据质控</b><br>
+        <span data-i18n="method3_body">Raw 2,039 → Remove samples with no Ct values → Valid 1,123 (55.1%). IC monitoring: IC Ct &lt; 40 indicates successful extraction. Dual-target cross-validation reduces false positive rate.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== EXPERIMENTAL METHODS SECTION ===== -->
+<div class="container" id="section-methods">
+
+  <div class="section-title"><span class="sec-icon">9</span><span data-i18n="sec_exp_methods">Experimental Methods & Procedures</span></div>
+
+  <!-- TAB BUTTONS -->
+  <div>
+    <span class="tab-btn active" onclick="switchTab('tab-sample')" id="tabBtn-sample" data-i18n="tab_sample">I. Sample Collection & Preparation</span>
+    <span class="tab-btn" onclick="switchTab('tab-enrich')" id="tabBtn-enrich" data-i18n="tab_enrich">II. Magnetic Bead Enrichment Extraction</span>
+    <span class="tab-btn" onclick="switchTab('tab-pcr')" id="tabBtn-pcr" data-i18n="tab_pcr">III. qPCR Amplification Detection</span>
+    <span class="tab-btn" onclick="switchTab('tab-lod')" id="tabBtn-lod" data-i18n="tab_lod">IV. Limit of Detection Validation</span>
+  </div>
+
+  <!-- TAB 1: SAMPLE PREP -->
+  <div id="tab-sample" class="method-tab active">
+    <div class="method-section">
+      <h2 data-i18n="exp_sample_h">I. Wastewater Sample Collection & Pre-treatment</h2>
+
+      <!-- 采样流程 -->
+      <div class="step-flow">
+        <div class="step-item"><div class="step-num">1</div><div class="step-label" data-i18n="step1_l">Field Sampling</div><div class="step-detail" data-i18n="step1_d">泵站/净化厂<br>聚乙烯瓶收集<br>冰上运输</div></div>
+        <div class="step-item"><div class="step-num">2</div><div class="step-label" data-i18n="step2_l">Low-Temperature Storage</div><div class="step-detail" data-i18n="step2_d">4°C 保存<br>避免反复冻融<br>及时处理</div></div>
+        <div class="step-item"><div class="step-num">3</div><div class="step-label" data-i18n="step3_l">Centrifugation Pre-treatment</div><div class="step-detail" data-i18n="step3_d">5000×g<br>离心 30 min<br>取上清</div></div>
+        <div class="step-item"><div class="step-num">4</div><div class="step-label" data-i18n="step4_l">Spiked Reference Material</div><div class="step-detail" data-i18n="step4_d">内参 PMMoV<br>SARS-CoV-2<br>假病毒标定</div></div>
+        <div class="step-item"><div class="step-num">5</div><div class="step-label" data-i18n="step5_l">Enrichment & Concentration</div><div class="step-detail" data-i18n="step5_d">Magnetic Bead Direct Method<br>或超滤管法<br>500 µL→50 µL</div></div>
+        <div class="step-item"><div class="step-num">6</div><div class="step-label" data-i18n="step6_l">Nucleic Acid Extraction</div><div class="step-detail" data-i18n="step6_d">裂解/洗涤<br>洗脱 50-80 µL<br>-20°C 保存</div></div>
+      </div>
+
+      <div class="method-grid">
+        <div class="method-card">
+          <h4 data-i18n="exp_wastewater_h">Wastewater Sample Types</h4>
+          <ul>
+            <li data-i18n="ww_type1">Influent Wastewater (WWTP Influent)</li>
+            <li data-i18n="ww_type2">Pumping Station Lift Wastewater (Network Interception)</li>
+            <li data-i18n="ww_type3">River / Sea / Lake Water (Environmental Control)</li>
+            <li data-i18n="ww_type4">Kitchen / Toilet Wastewater (Domestic Source)</li>
+            <li data-i18n="ww_type5">Clean Water (Negative Control)</li>
+          </ul>
+          <p style="margin-top:8px;font-size:11px;color:var(--muted);" data-i18n="ww_note">All samples collected from Futian, Luohu, and Pingshan districts of Shenzhen; collected in autoclaved polyethylene bottles, transported on ice, stored at 4°C. Samples with complete Ct values: 1,123/2,039 (55.1%).<llected in autoclaved polyethylene bottles, transported on ice, stored at 4°C 保存至提取</p>
+        </div>
+        <div class="method-card amber">
+          <h4 data-i18n="exp_pseudovirus_h">Pseudovirus Internal Reference System</h4>
+          <ul>
+            <li data-i18n="pv1">SARS-CoV-2 Pseudovirus (Primary Detection Target)</li>
+            <li data-i18n="pv2">Influenza A Pseudovirus (H1N1 Surrogate)</li>
+            <li data-i18n="pv3">Norovirus Pseudovirus (GI/GII)</li>
+            <li data-i18n="pv4">Monkeypox Virus Pseudovirus</li>
+            <li data-i18n="pv5">MS2 Bacteriophage (Extraction Process IC)</li>
+            <li data-i18n="pv6">PMMoV Pepper Mild Mottle Virus (Flow Normalization IC)</li>
+          </ul>
+          <p style="margin-top:8px;font-size:11px;color:var(--muted);" data-i18n="pv_note">Pseudovirus stock stored at −80°C; diluted in gradient before use (1:0.1:0.05:0.025:0.0125). Target concentrations: 100, 10, 5, 2.5, 1.25 copies/mL.<025:0.0125），加标浓度 100 拷贝/mL</p>
+        </div>
+      </div>
+
+      <!-- 试剂耗材 -->
+      <h4 style="margin-top:22px;margin-bottom:10px;font-size:13px;color:var(--ink-soft);" data-i18n="exp_reagent_h">Experimental Reagents & Consumables</h4>
+      <table class="reagent-table">
+        <thead><tr><th data-i18n="th_cat">Category</th><th data-i18n="th_item">Reagent / Consumable</th><th data-i18n="th_spec">Specification</th></tr></thead>
+        <tbody>
+          <tr><td data-i18n="cat_pcr">PCR Reagent</td><td data-i18n="pcr_comp_a">2019-nCoV PCR Reaction Mix A</td><td data-i18n="spec_pcr_a">17 µL / reaction</td></tr>
+          <tr><td></td><td data-i18n="pcr_comp_b">2019-nCoV PCR Reaction Mix B</td><td data-i18n="spec_pcr_b">3 µL / reaction, with reverse transcriptase</td></tr>
+          <tr><td data-i18n="cat_extract">Extraction Reagent</td><td data-i18n="item_lysis">Lysis Buffer</td><td data-i18n="spec_lysis">3.6 mL / sample, contains chaotropic salt</td></tr>
+          <tr><td></td><td data-i18n="item_protk">Proteinase K</td><td data-i18n="spec_protk">20 µL / sample, for protein degradation pre-treatment</td></tr>
+          <tr><td></td><td data-i18n="item_beads">Magnetic Bead Suspension</td><td data-i18n="spec_beads">20 µL / sample, SiO₂ magnetic beads</td></tr>
+          <tr><td></td><td data-i18n="item_wash">Wash Buffer A/B/C</td><td data-i18n="spec_wash">3 mL per well</td></tr>
+          <tr><td></td><td data-i18n="item_elut">Elution Buffer</td><td data-i18n="spec_elut">50–80 µL, 90°C incubation for 3 min</td></tr>
+          <tr><td data-i18n="cat_equip">Instruments & Equipment</td><td data-i18n="item_extractor">Yixin Automatic Extractor</td><td data-i18n="spec_extractor">Fully automated magnetic bead transfer, 24-well deep-well plate</td></tr>
+          <tr><td></td><td data-i18n="item_qpcr">SLAN-96P qPCR System</td><td data-i18n="spec_qpcr">Triple-channel fluorescence detection FAM/HEX/CY5</td></tr>
+          <tr><td></td><td data-i18n="item_centri">Centrifuge</td><td data-i18n="spec_centri">5000×g, 30 min pre-treatment centrifugation</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 2: ENRICHMENT -->
+  <div id="tab-enrich" class="method-tab">
+    <div class="method-section">
+      <h2 data-i18n="exp_enrich_h">II. Magnetic Bead Direct Enrichment Extraction (Core Method)</h2>
+
+      <div class="step-flow">
+        <div class="step-item"><div class="step-num">1</div><div class="step-label" data-i18n="enrich_s1_l">Sample Preparation</div><div class="step-detail" data-i18n="enrich_s1_d">4×4 mL 样本<br>置于 15 mL<br>离心管</div></div>
+        <div class="step-item"><div class="step-num">2</div><div class="step-label" data-i18n="enrich_s2_l">Lysis Reaction</div><div class="step-detail" data-i18n="enrich_s2_d">加入裂解液<br>蛋白酶K<br>95°C, 8 min</div></div>
+        <div class="step-item"><div class="step-num">3</div><div class="step-label" data-i18n="enrich_s3_l">Magnetic Bead Binding</div><div class="step-detail" data-i18n="enrich_s3_d">加磁珠悬液<br>混匀结合<br>核酸吸附</div></div>
+        <div class="step-item"><div class="step-num">4</div><div class="step-label" data-i18n="enrich_s4_l">Magnetic Separation</div><div class="step-detail" data-i18n="enrich_s4_d">磁力架 2 min<br>弃上清<br>保留磁珠</div></div>
+        <div class="step-item"><div class="step-num">5</div><div class="step-label" data-i18n="enrich_s5_l">Washing & Purification</div><div class="step-detail" data-i18n="enrich_s5_d">漂洗液 1×3 mL<br>漂洗液 2×3 mL<br>四管合并</div></div>
+        <div class="step-item"><div class="step-num">6</div><div class="step-label" data-i18n="enrich_s6_l">Elution & Recovery</div><div class="step-detail" data-i18n="enrich_s6_d">40°C 干燥 3 min<br>洗脱液 50-80 µL<br>90°C 温浴 3 min</div></div>
+      </div>
+
+      <div class="method-grid">
+        <div class="method-card">
+          <h4 data-i18n="enrich_detail_h">Key Operational Points</h4>
+          <ul>
+            <li data-i18n="enrich_k1">Wastewater sample stored at 4°C; centrifuged (5000×g, 30 min) to remove large particles</li>
+            <li data-i18n="enrich_k2">Proteinase K pre-treatment degrades proteins and reduces PCR inhibitors</li>
+            <li data-i18n="enrich_k3">After magnetic beads bind to nucleic acids, magnetic rack achieves solid-liquid separation</li>
+            <li data-i18n="enrich_k4">4-tube merge wash: concentrate 4×4 mL samples to 50–80 µL</li>
+            <li data-i18n="enrich_k5">Final concentration factor approx. 200–320×, significantly improving detection sensitivity</li>
+            <li data-i18n="enrich_k6">Total process: 2 h (automated) / 4 h (manual)</li>
+          </ul>
+        </div>
+        <div class="method-card green">
+          <h4 data-i18n="enrich_ultra_h">Ultrafiltration Tube Enrichment (Comparison Method)</h4>
+          <ul>
+            <li data-i18n="ultra1">Meizheng Enrichment Instrument with Ultrafiltration Concentration Tube</li>
+            <li data-i18n="ultra2">Soak in 500 mL wash solution; repeatedly aspirate with syringe to enrich virus</li>
+            <li data-i18n="ultra3">Elution: immerse bottom in elution buffer, aspirate 20 times</li>
+            <li data-i18n="ultra4">Proteinase treatment optimized incubation time: 10/20/30 min</li>
+            <li data-i18n="ultra5">PBS buffer assists in improving proteinase activity</li>
+          </ul>
+          <p style="margin-top:8px;font-size:11px;color:var(--muted);" data-i18n="ultra_note">Compared to magnetic bead method: ultrafiltration suitable for large volume (500 mL), magnetic bead method for smaller volume (4–16 mL). Both require Proteinase K pre-treatment.< mL), magnetic bead method for smaller volume积（16 mL），两种方法互补覆盖不同场景</p>
+        </div>
+      </div>
+
+      <div class="method-grid" style="margin-top:0">
+        <div class="method-card red">
+          <h4 data-i18n="enrich_4in1_h">Yixin 4in1 Four-in-One Method (Innovation)</h4>
+          <p data-i18n="enrich_4in1_body">In Step 4 (five-well) of the standard extraction procedure, pause the program, merge the four wells containing magnetic beads into the fourth well, then resume after sufficient enrichment.</p>
+          <ul style="margin-top:8px;">
+            <li data-i18n="4in1_1">Magnetic bead amount: 20 µL; Proteinase K: 20 µL</li>
+            <li data-i18n="4in1_2">Lysis buffer: 3.6 mL; sample: 4 mL / well</li>
+            <li data-i18n="4in1_3">Four-well merge: equivalent to processing 16 mL sample</li>
+            <li data-i18n="4in1_4">Compared to general reagent, detection limit improved approx. 4×</li>
+          </ul>
+        </div>
+        <div class="method-card amber">
+          <h4 data-i18n="enrich_compare_h">Method Comparison</h4>
+          <table class="reagent-table" style="font-size:11px;">
+            <thead><tr><th data-i18n="cmp_method">Method</th><th data-i18n="cmp_vol">Volume</th><th data-i18n="cmp_time">Time</th></tr></thead>
+            <tbody>
+              <tr><td data-i18n="cmp_m1">Magnetic Bead Direct Method</td><td>16 mL</td><td>~2 h</td></tr>
+              <tr><td data-i18n="cmp_m2">Ultrafiltration Tube Method</td><td>500 mL</td><td>~3 h</td></tr>
+              <tr><td data-i18n="cmp_m3">4in1 Integrated Method</td><td>16 mL</td><td>~1.5 h</td></tr>
+              <tr><td data-i18n="cmp_m4">Qiagen Kit</td><td>10 mL</td><td>~3 h</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: PCR -->
+  <div id="tab-pcr" class="method-tab">
+    <div class="method-section">
+      <h2 data-i18n="exp_pcr_h">III. Real-Time Fluorescent Quantitative RT-qPCR Detection Method</h2>
+
+      <div class="method-grid">
+        <div>
+          <h4 style="font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:10px;" data-i18n="pcr_react_h">Reaction Mix Preparation (20 µL total volume)</h4>
+          <table class="reagent-table">
+            <thead><tr><th data-i18n="th_component">Component</th><th data-i18n="th_volume">Volume (µL)</th></tr></thead>
+            <tbody>
+              <tr><td data-i18n="pcr_comp_a">2019-nCoV PCR Reaction Mix A</td><td>17</td></tr>
+              <tr><td data-i18n="pcr_comp_b">2019-nCoV PCR Reaction Mix B (with reverse transcriptase)</td><td>3</td></tr>
+              <tr><td data-i18n="comp_template">Test RNA / Negative Control / Positive Control</td><td>5</td></tr>
+            </tbody>
+          </table>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px;" data-i18n="pcr_react_note">Each batch must include positive and negative controls (1 tube each); each RNA sample technically replicated n = 2</p>
+        </div>
+        <div>
+          <h4 style="font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:10px;" data-i18n="pcr_channel_h">Fluorescence Channel Setup</h4>
+          <table class="reagent-table">
+            <thead><tr><th data-i18n="th_channel">Channel</th><th data-i18n="th_target">Target</th><th data-i18n="th_dye">Dye</th></tr></thead>
+            <tbody>
+              <tr><td>FAM</td><td data-i18n="pcr_target_orf">ORF1ab Gene</td><td>Reporter: FAM, Quencher: None</td></tr>
+              <tr><td>HEX / VIC</td><td data-i18n="pcr_target_n">N Gene</td><td>Reporter: VIC, Quencher: None</td></tr>
+              <tr><td>CY5</td><td data-i18n="ch_ic">IC Internal Control Gene</td><td>Reporter: CY5, Quencher: None</td></tr>
+              <tr><td>ROX</td><td data-i18n="ch_ref">Reference Fluorescence</td><td>Passive Reference</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h4 style="font-size:13px;font-weight:700;color:var(--ink-soft);margin:18px 0 10px;" data-i18n="pcr_program_h">PCR Program Parameters</h4>
+      <table class="reagent-table">
+        <thead><tr><th data-i18n="th_step">Step</th><th data-i18n="th_stage">Stage</th><th data-i18n="th_temp">Temperature</th><th data-i18n="th_time">Time</th><th data-i18n="th_cycle">Cycles</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td data-i18n="prog_rt">Reverse Transcription</td><td>50°C</td><td>10 min</td><td>1</td></tr>
+          <tr><td>2</td><td data-i18n="prog_act">Taq Enzyme Activation</td><td>97°C</td><td>1 min</td><td>1</td></tr>
+          <tr><td>3</td><td data-i18n="prog_den">Denaturation</td><td>97°C</td><td>5 sec</td><td rowspan="2">45</td></tr>
+          <tr><td>3</td><td data-i18n="prog_ann">Annealing/Extension + Fluorescence Acquisition</td><td>58°C</td><td>30 sec</td></tr>
+        </tbody>
+      </table>
+
+      <h4 style="font-size:13px;font-weight:700;color:var(--ink-soft);margin:18px 0 10px;" data-i18n="pcr_interpret_h">Result Interpretation Criteria</h4>
+      <table class="data-table">
+        <thead><tr>
+          <th data-i18n="pcr_th_famvic">FAM/VIC Channel (ORF1ab / N)</th>
+          <th data-i18n="pcr_th_cy5">CY5 Channel (IC)</th>
+          <th data-i18n="th_verdict">Verdict</th>
+        </tr></thead>
+        <tbody>
+          <tr><td data-i18n="pcr_cond1">Ct &lt; 37</td><td data-i18n="pcr_cond_ic1">Ct &lt; 37 or No Amplification</td><td><span class="badge badge-high" data-i18n="verdict_pos">Positive</span></td></tr>
+          <tr><td data-i18n="pcr_cond2">37 ≤ Ct &lt; 40</td><td data-i18n="pcr_cond_ic2">Ct &lt; 37</td><td><span class="badge badge-med" data-i18n="verdict_suspect">Suspect (Re-test)</span></td></tr>
+          <tr><td data-i18n="pcr_cond2">37 ≤ Ct &lt; 40</td><td data-i18n="pcr_cond_ic3">Ct &gt; 37 or No Amplification</td><td><span class="badge badge-low" data-i18n="verdict_retest">Extraction Anomaly, Re-test</span></td></tr>
+          <tr><td data-i18n="pcr_cond3">Ct ≥ 40 or No Amplification</td><td data-i18n="pcr_cond_ic2">Ct &lt; 37</td><td><span class="badge badge-neg" data-i18n="verdict_neg">Negative</span></td></tr>
+          <tr><td data-i18n="pcr_cond3">Ct &ge; 40 or No Amplification</td><td data-i18n="pcr_cond_ic3">Ct &gt; 37 or No Amplification</td><td><span class="badge badge-low" data-i18n="verdict_invalid">Amplification Anomaly, Re-test</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="method-card" style="margin-top:16px;border-left-color:var(--accent);">
+        <h4 data-i18n="pcr_limit_h">Method Limitations</h4>
+        <ul>
+          <li data-i18n="limit1">Kit limited to specified sample types (wastewater matrix)</li>
+          <li data-i18n="limit2">Improper sample collection/transport/storage may cause false negatives</li>
+          <li data-i18n="limit3">Cross-contamination during sample processing may cause false positives</li>
+          <li data-i18n="limit4">Samples below LoD (&lt; 10 copies/mL) may not be detected</li>
+          <li data-i18n="limit5">Wastewater matrix contains PCR inhibitors, which may cause IC failure (IC Ct &gt; 40)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: LOD VERIFICATION -->
+  <div id="tab-lod" class="method-tab">
+    <div class="method-section">
+      <h2 data-i18n="exp_lod_h">IV. Limit of Detection (LoD) Validation Study</h2>
+
+      <div class="method-grid">
+        <div class="method-card">
+          <h4 data-i18n="lod_design_h">Validation Experiment Design</h4>
+          <ul>
+            <li data-i18n="lod_d1">Test Object: SARS-CoV-2 Pseudovirus Nucleic Acid Standard Sample</li>
+            <li data-i18n="lod_d2">Spiked Concentration: 100 copies/mL (Reference)</li>
+            <li data-i18n="lod_d3">Dilution Gradient: 1 : 0.1 : 0.05 : 0.025 : 0.0125</li>
+            <li data-i18n="lod_d4">Corresponding Concentration: 100, 10, 5, 2.5, 1.25 copies/mL</li>
+            <li data-i18n="lod_d5">50 mL per sample, total 6 validation samples</li>
+            <li data-i18n="lod_d6">Technical Replicates: n = 2 per RNA sample</li>
+            <li data-i18n="lod_d7">Background Control: Negative Wastewater Sample</li>
+          </ul>
+        </div>
+        <div class="method-card amber">
+          <h4 data-i18n="lod_compare_h">Comparative Validation Design</h4>
+          <ul>
+            <li data-i18n="lod_c1"><b>方案 A</b>：通用磁珠核酸提取试剂盒（行业参考）</li>
+            <li data-i18n="lod_c2"><b>方案 B</b>：项目组研制磁珠直接提取法</li>
+            <li data-i18n="lod_c3">After both extraction methods, universal qPCR detection was applied</li>
+            <li data-i18n="lod_c4">Detection Volume: 16 mL / sample (4×4 mL)</li>
+            <li data-i18n="lod_c5">Commissioned by: Shenzhen Second People's Hospital</li>
+            <li data-i18n="lod_c6">Validation Date: Dec 8–11, 2023</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 验证结果 -->
+      <div class="result-box">
+        <h4 data-i18n="lod_result_h">Validation Results</h4>
+        <p style="font-size:13px;color:var(--text);line-height:1.7;" data-i18n="lod_result_body">
+          项目组研制方法在污水样本中可检测到稀释后预期浓度 <b>1.25–5 拷贝/mL</b> 范围内的病毒信号，
+          经与通用核酸提取试剂盒对比，项目方法获得更低的 Ct 值（即更高灵敏度）。
+          回收率计算公式：<code style="background:#e8f0f8;padding:1px 4px;border-radius:3px;">V1/V2 × 2^(CT2−CT1) × 100%</code>
+        </p>
+        <div class="result-highlight">
+          <div class="result-chip"><div class="rval">&lt; 10</div><div class="rlab" data-i18n="lod_chip1">最低检出限<br>拷贝/mL</div></div>
+          <div class="result-chip"><div class="rval" style="color:var(--secondary);">&gt; 87%</div><div class="rlab" data-i18n="lod_chip2">核酸平均<br>回收率</div></div>
+          <div class="result-chip"><div class="rval" style="color:var(--warning);">~2 h</div><div class="rlab" data-i18n="lod_chip3">自动化提取<br>全程耗时</div></div>
+          <div class="result-chip"><div class="rval" style="color:var(--muted);">~4 h</div><div class="rlab" data-i18n="lod_chip4">手动提取<br>全程耗时</div></div>
+        </div>
+      </div>
+
+      <!-- Ct 值数据 -->
+      <h4 style="font-size:13px;font-weight:700;color:var(--ink-soft);margin:20px 0 10px;" data-i18n="lod_ct_h">📊 Validation Experiment Ct Results (Expected Conc. vs N Gene Ct)</h4>
+      <table class="data-table">
+        <thead><tr>
+          <th data-i18n="th_sample_type">Sample Type</th>
+          <th data-i18n="th_conc">Nucleic Acid Concentration (copies/mL)</th>
+          <th data-i18n="th_n_ct">N Gene Ct Value</th>
+          <th data-i18n="th_ic_ct">IC Ct Value</th>
+          <th data-i18n="th_result">Detection Result</th>
+        </tr></thead>
+        <tbody>
+          <tr><td data-i18n="samp_pos">SARS-CoV-2 Pseudovirus Positive Wastewater</td><td>100</td><td>36.88 / 36.89</td><td>31.19</td><td><span class="badge badge-high" data-i18n="res_pos">Positive</span></td></tr>
+          <tr><td></td><td>10</td><td>35.49 / 35.63</td><td>31.19</td><td><span class="badge badge-high" data-i18n="res_pos2">Positive</span></td></tr>
+          <tr><td></td><td>5</td><td>36.30</td><td>—</td><td><span class="badge badge-high" data-i18n="res_pos3">Positive</span></td></tr>
+          <tr><td></td><td>2.5</td><td>36.92</td><td>—</td><td><span class="badge badge-med" data-i18n="res_borderline">Detected (Borderline)</span></td></tr>
+          <tr><td></td><td>1.25</td><td>37.23</td><td>—</td><td><span class="badge badge-med" data-i18n="res_detect">Weak Detection</span></td></tr>
+          <tr><td data-i18n="samp_neg">Negative Background Wastewater</td><td>0</td><td data-i18n="ct_none">No Amplification</td><td>—</td><td><span class="badge badge-neg" data-i18n="res_neg">Negative</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="detection-limit">
+        <strong data-i18n="lod_conclusion_h">验证结论：</strong>
+        <p style="font-size:12px;color:var(--text);margin-top:6px;line-height:1.65;" data-i18n="lod_conclusion_body">
+          深圳市第二人民医院项目组研制的磁珠直接提取法达到最低检出限 <b>10 拷贝/mL</b>，
+          实际可检测低至 <b>1.25 拷贝/mL</b> 浓度的病毒核酸信号。核酸回收率 &gt; 87%，
+          显著优于通用试剂盒。该方法通过了第三方验证，具备用于污水流行病学监测的技术可行性。
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end #section-methods -->
+
+<!-- ===== GEO MAP MODULE ===== -->
+<div class="container" id="section-geomap">
+  <div class="section-title"><span class="sec-icon">10</span><span data-i18n="sec_map">Shenzhen Three-District WBE Positive Rate Geographic Heatmap</span></div>
+  <div class="panel" style="padding:24px 28px;">
+
+    <!-- 指标切换 -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--muted);font-weight:600;" data-i18n="map_metric_label">Display Metric:</span>
+      <span class="tab-btn active" id="mapMetricDual"  onclick="setMapMetric('dual')"  data-i18n="map_metric_dual">Dual-Target Positive Rate</span>
+      <span class="tab-btn"        id="mapMetricN"     onclick="setMapMetric('npos')"  data-i18n="map_metric_n">N Gene Positive Rate</span>
+      <span class="tab-btn"        id="mapMetricIC"    onclick="setMapMetric('ic')"    data-i18n="map_metric_ic">IC Pass Rate</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start;">
+
+      <!-- Leaflet 真实地图 -->
+      <div>
+        <!-- 地图加载状态 -->
+        <div id="mapLoading" style="text-align:center;padding:80px 0;color:var(--muted);font-size:13px;">
+          <div style="font-size:20px;margin-bottom:8px;opacity:0.4;">Loading...</div>
+          <span data-i18n="map_loading">Loading real map data...</span>
+        </div>
+        <!-- Leaflet 地图容器 -->
+        <canvas id="szLeafletMap" width="800" height="380" style="width:100%;height:380px;border-radius:10px;overflow:hidden;display:none;border:1.5px solid var(--border);"></canvas>
+        <!-- Tooltip -->
+        <div id="mapTooltip" style="display:none;position:fixed;background:rgba(15,76,129,.92);color:#fff;padding:10px 14px;border-radius:8px;font-size:12px;pointer-events:none;z-index:9999;min-width:170px;backdrop-filter:blur(4px);box-shadow:0 4px 16px rgba(0,0,0,.25);font-family:'Times New Roman','Microsoft YaHei',sans-serif;line-height:1.7;"></div>
+      </div>
+
+      <!-- 右侧：时间轴 + 图例 + 数据卡 -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- 当前月份显示 -->
+        <div style="text-align:center;">
+          <div id="mapMonthLabel" style="font-size:22px;font-weight:700;color:var(--primary);font-family:'Times New Roman',sans-serif;">2022-10</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;" data-i18n="map_drag_hint">Drag slider below to switch months</div>
+        </div>
+
+        <!-- 时间轴滑块 -->
+        <div style="padding:0 4px;">
+          <input type="range" id="mapSlider" min="0" max="10" value="0" step="1"
+            style="width:100%;accent-color:var(--secondary);height:6px;cursor:pointer;"
+            oninput="onMapSlider(this.value)"/>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--muted);font-family:'Times New Roman',sans-serif;">
+            <span>2022-10</span><span>2023-04</span><span>2023-08</span>
+          </div>
+        </div>
+
+        <!-- 播放按钮 -->
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <button id="mapPlayBtn" onclick="toggleMapPlay()"
+            style="padding:6px 20px;border:1.5px solid var(--secondary);background:var(--secondary);color:#fff;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Times New Roman','Microsoft YaHei',sans-serif;transition:background .15s;"
+            data-i18n="map_play">▶ Play</button>
+          <button onclick="onMapSlider(0)"
+            style="padding:6px 14px;border:1.5px solid var(--border);background:#fff;color:var(--muted);border-radius:6px;font-size:12px;cursor:pointer;font-family:'Times New Roman','Microsoft YaHei',sans-serif;"
+            data-i18n="map_reset">↺ Reset</button>
+        </div>
+
+        <!-- 三区数据卡 -->
+        <div style="display:flex;flex-direction:column;gap:8px;" id="mapDataCards">
+          <!-- 由JS渲染 -->
+        </div>
+
+        <!-- 颜色图例 -->
+        <div style="margin-top:4px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600;" data-i18n="map_legend_title">Dual-Target Positive Rate Color Legend</div>
+          <div style="display:flex;align-items:center;gap:0;border-radius:4px;overflow:hidden;height:14px;">
+            <div style="flex:1;background:linear-gradient(to right,#eaf5fb,#a8d4f5,#1a7abf,#e8a00a,#e74c3c);height:100%;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:3px;font-family:'Times New Roman',sans-serif;">
+            <span>0%</span><span>10%</span><span>20%</span><span>30%</span><span>≥40%</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Main application script -->
+  <script src="js/main.js"></script>
+
+<!-- FOOTER -->
+<div class="footer" data-i18n="footer">
+  Analysis Report · Based on PCR Testing Data from 2,040 Wastewater Samples · Data Range: Oct 2022 – Aug 2023 · Shenzhen Three-District Wastewater-Based Epidemiology Monitoring Study
+</div>
+
+</body>
+</html>

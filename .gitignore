@@ -1,0 +1,19 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~
+
+# Dependencies (可从 CDN 加载，保留 js/css 目录供本地依赖)
+# node_modules/
+
+# Logs
+*.log
+
+# Build
+dist/
+build/
