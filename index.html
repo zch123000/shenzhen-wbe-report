@@ -510,21 +510,21 @@
     </div>
     <div class="kpi-card success">
       <div class="kpi-label" data-i18n="kpi2_label">N Gene Detection Rate (Ct &lt; 40)</div>
-      <div class="kpi-value">55.4%</div>
-      <div class="kpi-sub" data-i18n="kpi2_sub">622/1123 detected · Mean Ct = 35.18</div>
-      <div class="kpi-badge" data-i18n="kpi2_badge">Strict Positive (Ct&lt;37): 36.4%</div>
+      <div class="kpi-value">54.0%</div>
+      <div class="kpi-sub" data-i18n="kpi2_sub">606/1123 detected · Mean Ct = 35.18</div>
+      <div class="kpi-badge" data-i18n="kpi2_badge">Strict Positive (Ct&lt;37): 35.0%</div>
     </div>
     <div class="kpi-card warn">
       <div class="kpi-label" data-i18n="kpi3_label">ORF1ab Detection Rate (Ct &lt; 40)</div>
-      <div class="kpi-value">33.1%</div>
-      <div class="kpi-sub" data-i18n="kpi3_sub">372/1123 detected · Mean Ct = 34.87</div>
-      <div class="kpi-badge" data-i18n="kpi3_badge">Strict Positive (Ct&lt;37): 20.2%</div>
+      <div class="kpi-value">31.7%</div>
+      <div class="kpi-sub" data-i18n="kpi3_sub">356/1123 detected · Mean Ct = 34.87</div>
+      <div class="kpi-badge" data-i18n="kpi3_badge">Strict Positive (Ct&lt;37): 18.8%</div>
     </div>
     <div class="kpi-card danger">
       <div class="kpi-label" data-i18n="kpi4_label">Dual-Target Positive Rate (Ct &lt; 37)</div>
-      <div class="kpi-value">16.8%</div>
-      <div class="kpi-sub" data-i18n="kpi4_sub">189/1123 dual-target positive</div>
-      <div class="kpi-badge" data-i18n="kpi4_badge">IC Pass Rate: 74.8%</div>
+      <div class="kpi-value">15.4%</div>
+      <div class="kpi-sub" data-i18n="kpi4_sub">173/1123 dual-target positive</div>
+      <div class="kpi-badge" data-i18n="kpi4_badge">IC Pass Rate: 73.6%</div>
     </div>
   </div>
 
@@ -592,7 +592,7 @@
         <tbody>
           <tr>
             <td><span class="badge badge-high" data-i18n="cls_high">High Positive</span></td>
-            <td>170</td><td>15.1%</td>
+            <td>173</td><td>15.4%</td>
             <td data-i18n="cls_high_crit">Both targets Ct &lt; 37</td>
           </tr>
           <tr>
@@ -607,18 +607,18 @@
           </tr>
           <tr>
             <td><span class="badge badge-neg" data-i18n="cls_neg">Negative</span></td>
-            <td>394</td><td>35.1%</td>
+            <td>377</td><td>33.6%</td>
             <td data-i18n="cls_neg_crit">No amplification in all targets</td>
           </tr>
           <tr>
             <td><span class="badge" style="background:#f0e6ff;color:#6c3483;" data-i18n="cls_ic">IC Failure</span></td>
-            <td>283</td><td>25.2%</td>
-            <td data-i18n="cls_ic_crit">IC Ct ≥ 40 or No Ct</td>
+            <td>297</td><td>26.4%</td>
+            <td data-i18n="cls_ic_crit">IC Ct ≥ 40 or No Ct (297/1123)</td>
           </tr>
         </tbody>
       </table>
       <div style="margin-top:14px;padding:10px 14px;background:#eaf4fb;border-radius:4px;font-size:12px;color:var(--ink-soft);border:1px solid var(--line);" data-i18n="ic_note">
-        <b>内标说明：</b>内标（IC）用于监测提取抑制和操作失误。IC 失败率 25.2% 提示部分污水样本含有 PCR 抑制物，为污水基质检测的固有挑战。
+        <b>内标说明：</b>828 份获得数值型 RNase P Ct，其中 IC Ct&lt;40 有 826 份（占数值型内标样本 99.8%）。IC 失败率 26.4%（297/1123）提示部分污水样本含有 PCR 抑制物，为污水基质检测的固有挑战。
       </div>
     </div>
   </div>
@@ -660,7 +660,7 @@
     <div class="insight-card green">
       <div class="insight-icon">3</div>
       <div class="insight-title" data-i18n="ins3_title">N Gene Is More Sensitive Than ORF1ab</div>
-      <div class="insight-body" data-i18n="ins3_body">N gene detection rate (55.4%) significantly exceeds ORF1ab (33.1%). Among positive samples, mean N Ct = 35.18, ORF1ab = 34.87, with high correlation (r ≈ 0.92). N gene is optimal as the primary screening target.</div>
+      <div class="insight-body" data-i18n="ins3_body">N gene detection rate (54.0%) significantly exceeds ORF1ab (31.7%). Among positive samples, mean N Ct = 35.18, ORF1ab = 34.87, with high correlation (r ≈ 0.92). N gene is optimal as the primary screening target.</div>
     </div>
     <div class="insight-card amber">
       <div class="insight-icon">4</div>
@@ -674,8 +674,8 @@
     </div>
     <div class="insight-card amber">
       <div class="insight-icon">6</div>
-      <div class="insight-title" data-i18n="ins6_title">IC Failure Rate Requires Attention (25.2%)</div>
-      <div class="insight-body" data-i18n="ins6_body">IC pass rate is only 74.8%, dropping to 33-39% during May-July 2023, suggesting high-concentration PCR inhibitors or reduced extraction efficiency. Magnetic bead enrichment preprocessing has key value in addressing this issue.</div>
+      <div class="insight-title" data-i18n="ins6_title">IC Failure Rate Requires Attention (26.4%)</div>
+      <div class="insight-body" data-i18n="ins6_body">IC pass rate is only 73.6%, dropping to 33-39% during May-July 2023, suggesting high-concentration PCR inhibitors or reduced extraction efficiency. Magnetic bead enrichment preprocessing has key value in addressing this issue.</div>
     </div>
   </div>
 

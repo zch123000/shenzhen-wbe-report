@@ -6,7 +6,11 @@
       "Bash(git push *)",
       "Bash(gh auth *)",
       "Bash(gh repo *)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(gh release *)",
+      "Bash(gh pages *)",
+      "Bash(gh api *)",
+      "Bash(gh run *)"
     ]
   }
 }

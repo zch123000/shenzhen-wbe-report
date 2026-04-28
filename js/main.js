@@ -12,9 +12,9 @@ const I18N = {
 
     sec_kpi:    '📊 核心检测指标总览',
     kpi1_label: '原始收集样本',       kpi1_sub: '有效样本 1,123 份（55.1%）',
-    kpi2_label: 'N 基因检出率（Ct < 40）', kpi2_sub: '622 / 1123 份检出 · 平均 Ct = 35.18', kpi2_badge: '严格阳性（Ct<37）：36.4%',
-    kpi3_label: 'ORF1ab 检出率（Ct < 40）', kpi3_sub: '372 / 1123 份检出 · 平均 Ct = 34.87', kpi3_badge: '严格阳性（Ct<37）：20.2%',
-    kpi4_label: '双靶标阳性率（Ct < 37）',  kpi4_sub: '189 / 1123 份双靶标阳性',           kpi4_badge: '内标通过率：74.8%',
+    kpi2_label: 'N 基因检出率（Ct < 40）', kpi2_sub: '606 / 1123 份检出 · 平均 Ct = 35.18', kpi2_badge: '严格阳性（Ct<37）：35.0%',
+    kpi3_label: 'ORF1ab 检出率（Ct < 40）', kpi3_sub: '356 / 1123 份检出 · 平均 Ct = 34.87', kpi3_badge: '严格阳性（Ct<37）：18.8%',
+    kpi4_label: '双靶标阳性率（Ct < 37）',  kpi4_sub: '173 / 1123 份双靶标阳性',           kpi4_badge: '内标通过率：73.6%',
 
     sec_time:           '📈 时间维度分析',
     chart_trend_title:  '月度检测阳性率趋势（N 基因 / ORF1ab / 双靶标）',
@@ -38,7 +38,7 @@ const I18N = {
     cls_low:  '低阳性',   cls_low_crit:  '任一靶标 Ct 37–40',
     cls_neg:  '阴性',     cls_neg_crit:  '所有靶标均无扩增',
     cls_ic:   'IC 失败',  cls_ic_crit:   '内标 Ct ≥ 40 或无 Ct',
-    ic_note: '<b>💡 内标说明：</b>内标（IC）用于监测提取抑制和操作失误。IC 失败率 25.2% 提示部分污水样本含有 PCR 抑制物，为污水基质检测的固有挑战。',
+    ic_note: '<b>💡 内标说明：</b>828 份获得数值型 RNase P Ct，其中 IC Ct&lt;40 有 826 份（占数值型内标样本 99.8%）。IC 失败率 26.4%（297/1123）提示部分污水样本含有 PCR 抑制物，为污水基质检测的固有挑战。',
 
     sec_sites: '📍 主要采样点检测统计',
     th_site: '采样点', th_region: '地区', th_n: '样本数', th_npos: 'N 阳性率',
@@ -50,13 +50,13 @@ const I18N = {
     ins2_title: '罗湖区早期疫情信号更强',
     ins2_body:  '罗湖区在 2022 年 10 月（42.9%）和 12 月（39.3%）双靶标阳性率均高于福田区（35.3% / 11.1%），提示罗湖区作为早期预警哨点具有优先监测价值。福田区 2023 年 1 月骤升至 37% 略晚于罗湖区。',
     ins3_title: 'N 基因比 ORF1ab 更敏感',
-    ins3_body:  'N 基因检出率（55.4%）显著高于 ORF1ab（33.1%），在阳性样本中 N 基因平均 Ct = 35.18，ORF1ab = 34.87，两靶标 Ct 值高度相关（r≈0.92）。N 基因作为主要筛查靶标更优。',
+    ins3_body:  'N 基因检出率（54.0%）显著高于 ORF1ab（31.7%），在阳性样本中 N 基因平均 Ct = 35.18，ORF1ab = 34.87，两靶标 Ct 值高度相关（r≈0.92）。N 基因作为主要筛查靶标更优。',
     ins4_title: 'Ct 值中位数揭示低病毒载量',
     ins4_body:  'N 基因 Ct 中位数 <b>36.3</b>（范围 6.9–44.7），75% 分位数达 38.7，表明污水样本中病毒浓度普遍较低，处于检测下限附近，与污水样本的高稀释率一致。',
     ins5_title: '水质净化厂阳性率高',
     ins5_body:  '滨河水质净化厂（21.8%）、福田保税区泵房（20.8%）、黄冈街道（20.0%）双靶标阳性率最高，这与污水处理厂汇聚上游人口、集中放大病毒信号的原理相符。',
-    ins6_title: '内标失效率需关注（25.2%）',
-    ins6_body:  '内标通过率仅 74.8%，2023 年 5–7 月内标通过率更降至 33–39%，提示这批样本可能含高浓度 PCR 抑制物，或提取效率下降。磁珠富集预处理在改善这一问题上具有关键价值。',
+    ins6_title: '内标失效率需关注（26.4%）',
+    ins6_body:  '内标通过率仅 73.6%（826/828），2023 年 5–7 月内标通过率更降至 33–39%，提示这批样本可能含高浓度 PCR 抑制物，或提取效率下降。磁珠富集预处理在改善这一问题上具有关键价值。',
 
     sec_method:     '检测方法与质控说明',
     method1_title:  '样本采集',
@@ -257,9 +257,9 @@ const I18N = {
 
     sec_kpi:    '📊 Key Detection Metrics',
     kpi1_label: 'Total Samples Collected', kpi1_sub: 'Valid samples: 1,123 (55.1%)',
-    kpi2_label: 'N Gene Detection Rate (Ct < 40)', kpi2_sub: '622 / 1123 detected · Mean Ct = 35.18', kpi2_badge: 'Strict positive (Ct<37): 36.4%',
-    kpi3_label: 'ORF1ab Detection Rate (Ct < 40)',  kpi3_sub: '372 / 1123 detected · Mean Ct = 34.87', kpi3_badge: 'Strict positive (Ct<37): 20.2%',
-    kpi4_label: 'Dual-Target Positive Rate (Ct < 37)', kpi4_sub: '189 / 1123 dual-target positive', kpi4_badge: 'IC Pass Rate: 74.8%',
+    kpi2_label: 'N Gene Detection Rate (Ct < 40)', kpi2_sub: '606 / 1123 detected · Mean Ct = 35.18', kpi2_badge: 'Strict positive (Ct<37): 35.0%',
+    kpi3_label: 'ORF1ab Detection Rate (Ct < 40)',  kpi3_sub: '356 / 1123 detected · Mean Ct = 34.87', kpi3_badge: 'Strict positive (Ct<37): 18.8%',
+    kpi4_label: 'Dual-Target Positive Rate (Ct < 37)', kpi4_sub: '173 / 1123 dual-target positive', kpi4_badge: 'IC Pass Rate: 73.6%',
 
     sec_time:           '📈 Temporal Analysis',
     chart_trend_title:  'Monthly Positive Rate Trend (N gene / ORF1ab / Dual-target)',
@@ -283,7 +283,7 @@ const I18N = {
     cls_low:  'Low Positive',  cls_low_crit:  'Any target Ct 37–40',
     cls_neg:  'Negative',      cls_neg_crit:  'No amplification detected',
     cls_ic:   'IC Failure',    cls_ic_crit:   'IC Ct ≥ 40 or no Ct',
-    ic_note: '<b>💡 Internal Control Note:</b> IC monitors extraction inhibition and procedural errors. A 25.2% IC failure rate indicates PCR inhibitors in some wastewater samples—an inherent challenge for environmental matrices.',
+    ic_note: '<b>💡 Internal Control Note:</b> 828 samples yielded numeric RNase P Ct values; 826 had IC Ct&lt;40 (99.8% among numeric IC samples). A 26.4% IC failure rate (297/1123) indicates PCR inhibitors in some wastewater samples—an inherent challenge for environmental matrices.',
 
     sec_sites: '📍 Key Sampling Site Statistics',
     th_site: 'Sampling Site', th_region: 'District', th_n: 'Samples', th_npos: 'N Pos Rate',
@@ -295,13 +295,13 @@ const I18N = {
     ins2_title: 'Luohu District Showed Stronger Early Signal',
     ins2_body:  "Luohu's dual-target rate in Oct 2022 (42.9%) and Dec 2022 (39.3%) exceeded Futian (35.3% / 11.1%), suggesting Luohu as a priority early-warning sentinel site. Futian's sharp rise to 37% in Jan 2023 lagged Luohu by ~1 month.",
     ins3_title: 'N Gene More Sensitive than ORF1ab',
-    ins3_body:  'N gene detection rate (55.4%) substantially exceeded ORF1ab (33.1%). Mean Ct: N = 35.18, ORF1ab = 34.87. The two targets are highly correlated (r ≈ 0.92), confirming N gene as the preferred primary screening target.',
+    ins3_body:  'N gene detection rate (54.0%) substantially exceeded ORF1ab (31.7%). Mean Ct: N = 35.18, ORF1ab = 34.87. The two targets are highly correlated (r ≈ 0.92), confirming N gene as the preferred primary screening target.',
     ins4_title: 'Median Ct Indicates Low Viral Load',
     ins4_body:  'N gene Ct median = <b>36.3</b> (range 6.9–44.7); 75th percentile at 38.7, indicating generally low virus concentration near the detection limit—consistent with high dilution in wastewater matrices.',
     ins5_title: 'Treatment Plants Show Highest Positivity',
     ins5_body:  'Binhe WWTP (21.8%), Futian Bonded Zone Pump Station (20.8%), and Huanggang Subdistrict (20.0%) had the highest dual-target rates, consistent with the wastewater treatment plant\'s role in amplifying upstream population signals.',
-    ins6_title: 'IC Failure Rate Warrants Attention (25.2%)',
-    ins6_body:  'IC pass rate was only 74.8%; dropping further to 33–39% in May–Jul 2023, suggesting high PCR inhibitor concentrations or extraction efficiency decline. Magnetic bead enrichment pretreatment is critical for addressing this issue.',
+    ins6_title: 'IC Failure Rate Warrants Attention (26.4%)',
+    ins6_body:  'IC pass rate was 73.6% (826/828); dropping further to 33–39% in May–Jul 2023, suggesting high PCR inhibitor concentrations or extraction efficiency decline. Magnetic bead enrichment pretreatment is critical for addressing this issue.',
 
     sec_method:     'Detection Methods & Quality Control',
     method1_title:  'Sample Collection',
@@ -502,9 +502,9 @@ const I18N = {
 
     sec_kpi:    '📊 主要検出指標概要',
     kpi1_label: '収集サンプル総数',       kpi1_sub: '有効サンプル1,123件（55.1%）',
-    kpi2_label: 'N遺伝子検出率（Ct < 40）', kpi2_sub: '622 / 1,123件検出 · 平均Ct = 35.18', kpi2_badge: '厳格陽性（Ct<37）：36.4%',
-    kpi3_label: 'ORF1ab検出率（Ct < 40）', kpi3_sub: '372 / 1,123件検出 · 平均Ct = 34.87', kpi3_badge: '厳格陽性（Ct<37）：20.2%',
-    kpi4_label: 'デュアルターゲット陽性率（Ct < 37）',  kpi4_sub: '189 / 1,123件デュアルターゲット陽性',           kpi4_badge: 'IC通過率：74.8%',
+    kpi2_label: 'N遺伝子検出率（Ct < 40）', kpi2_sub: '606 / 1,123件検出 · 平均Ct = 35.18', kpi2_badge: '厳格陽性（Ct<37）：35.0%',
+    kpi3_label: 'ORF1ab検出率（Ct < 40）', kpi3_sub: '356 / 1,123件検出 · 平均Ct = 34.87', kpi3_badge: '厳格陽性（Ct<37）：18.8%',
+    kpi4_label: 'デュアルターゲット陽性率（Ct < 37）',  kpi4_sub: '173 / 1,123件デュアルターゲット陽性',           kpi4_badge: 'IC通過率：73.6%',
 
     sec_time:           '📈 時系列分析',
     chart_trend_title:  '月別陽性率推移（N遺伝子 / ORF1ab / デュアルターゲット）',
@@ -528,7 +528,7 @@ const I18N = {
     cls_low:  '低陽性',   cls_low_crit:  'いずれかのターゲットCt 37–40',
     cls_neg:  '陰性',     cls_neg_crit:  '全ターゲットで増幅なし',
     cls_ic:   'IC失敗',  cls_ic_crit:   'ICのCt ≥ 40またはCtなし',
-    ic_note: '<b>💡 内部コントロール（IC）について：</b>ICは抽出阻害と操作ミスを監視する。25.2%のIC失敗率は、一部の汚水サンプルにPCR阻害物が含まれていることを示唆しており、環境マトリックス特有の課題です。',
+    ic_note: '<b>💡 内部コントロール（IC）について：</b>828件が数値型RNase P Ct値を取得し、そのうちIC Ct&lt;40は826件（数値型ICサンプル内で99.8%）。26.4%のIC失効率（297/1123）は、一部の汚水サンプルにPCR阻害物が含まれていることを示唆しており、環境マトリックス特有の課題です。',
 
     sec_sites: '📍 主要採水地点統計',
     th_site: '採水地点', th_region: '地域', th_n: 'サンプル数', th_npos: 'N陽性率',
@@ -540,13 +540,13 @@ const I18N = {
     ins2_title: '羅湖区は早期感染信号が強力',
     ins2_body:  '羅湖区は2022年10月（42.9%）と12月（39.3%）のデュアル陽性率が福田区（35.3% / 11.1%）を上回っており、羅湖区を優先的な早期警戒拠点としての価値を示しています。福田区は2023年1月に急上昇した37%は羅湖区より約1ヶ月遅れていました。',
     ins3_title: 'N遺伝子の方がORF1abより感度が高い',
-    ins3_body:  'N遺伝子検出率（55.4%）はORF1ab（33.1%）を有意に上回っています。陽性サンプルにおける平均Ct：N=35.18、ORF1ab=34.87。両ターゲットのCt値は高度に相関（r≈0.92）しており、N遺伝子を主要スクリーニングターゲットとして推奨します。',
+    ins3_body:  'N遺伝子検出率（54.0%）はORF1ab（31.7%）を有意に上回っています。陽性サンプルにおける平均Ct：N=35.18、ORF1ab=34.87。両ターゲットのCt値は高度に相関（r≈0.92）しており、N遺伝子を主要スクリーニングターゲットとして推奨します。',
     ins4_title: 'Ct値中央値は低ウイルス負荷を示す',
     ins4_body:  'N遺伝子Ct中央値=<b>36.3</b>（範囲6.9–44.7）、75パーセンタイル値38.7。汚水サンプル中のウイルス濃度が一般的に低く、検出限界付近にあることを示しており、高希釈率による汚水マトリックスの特性と一致しています。',
     ins5_title: '水処理場の陽性率が最も高く',
     ins5_body:  '浜河水質浄化厂（21.8%）、福田保税区ポンプ場（20.8%）、黄岡街道（20.0%）が最高のデュアル陽性率を示しました。これは処理場が上流人口を集約・ウイルス信号を増幅する原理と一致します。',
-    ins6_title: 'IC失効率に注意が必要（25.2%）',
-    ins6_body:  'IC通過率はわずか74.8%。2023年5–7月には33–39%にさらに低下しており、高濃度のPCR阻害物または抽出効率低下を示唆しています。磁気ビード濃縮前処理はこの問題への対処に重要です。',
+    ins6_title: 'IC失効率に注意が必要（26.4%）',
+    ins6_body:  'IC通過率はわずか73.6%（826/828）。2023年5–7月には33–39%にさらに低下しており、高濃度のPCR阻害物または抽出効率低下を示唆しています。磁気ビード濃縮前処理はこの問題への対処に重要です。',
 
     sec_method:     '検出方法と品質管理',
     method1_title:  'サンプル採取',
@@ -1119,7 +1119,7 @@ charts.scatter = new Chart(document.getElementById('corrScatter'), {
 charts.donut = new Chart(document.getElementById('classDonut'), {
   type:'doughnut',
   data:{ labels:t0.lbl_donut,
-    datasets:[{ data:[170,160,116,394,283],
+    datasets:[{ data:[173,160,116,377,297],
       backgroundColor:['#e74c3c','#f39c12','#27ae60','#bdc3c7','#9b59b6'],
       borderWidth:2, borderColor:'#fff', hoverOffset:8 }] },
   options:{ responsive:true, maintainAspectRatio:false, cutout:'58%',
@@ -1575,4 +1575,4 @@ window.addEventListener('error', function(e) {
 
 
 
-
+
