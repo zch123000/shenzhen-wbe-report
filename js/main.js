@@ -223,6 +223,9 @@ const I18N = {
     map_dual_tip:      '双靶标阳性率',
     map_npos_tip:      'N 基因阳性率',
     map_ic_tip:        '内标通过率',
+    map_click_hint:    '点击查看详情',
+    map_click_outside: '点击空白区域关闭',
+    map_zoom_hint:     '滚轮缩放 · 拖拽平移 · 双击重置',
 
     // 图表标签
     lbl_n_pos:    'N基因阳性率(%)',
@@ -468,6 +471,9 @@ const I18N = {
     map_dual_tip:      'Dual-Target Positive Rate',
     map_npos_tip:      'N Gene Positive Rate',
     map_ic_tip:        'IC Pass Rate',
+    map_click_hint:    'Click for details',
+    map_click_outside: 'Click outside to close',
+    map_zoom_hint:     'Scroll to zoom · Drag to pan · Double-click to reset',
 
     // 图表标签
     lbl_n_pos:    'N Gene Positive Rate (%)',
@@ -667,6 +673,9 @@ const I18N = {
     map_dual_tip:      'デュアルターゲット陽性率',
     map_npos_tip:      'N遺伝子陽性率',
     map_ic_tip:        'IC通過率',
+    map_click_hint:    'クリックで詳細',
+    map_click_outside: '外側をクリックで閉じる',
+    map_zoom_hint:     'スクロールでズーム · ドラッグで移動 · ダブルクリックでリセット',
 
     // チャートラベル
     lbl_n_pos:    'N遺伝子陽性率(%)',
@@ -1193,6 +1202,24 @@ let mapCanvas    = null;           // canvas element
 let mapCtx       = null;           // 2d context
 let geoFeatures  = [];             // parsed district features
 let hitDistrict  = null;           // 鼠标悬停的区
+let mapDPR       = 1;              // devicePixelRatio for HiDPI
+
+// 缩放拖拽状态
+let mapZoomLevel = 1;
+let mapPanX = 0, mapPanY = 0;
+let mapDragStartX = 0, mapDragStartY = 0;
+let mapPanStartX = 0, mapPanStartY = 0;
+let mapIsDragging = false;
+
+// 月份过渡动画
+let mapAnimFrame  = null;
+let mapAnimFromIdx = -1;
+let mapAnimToIdx   = -1;
+let mapAnimProgress = 1;  // 1 = complete
+const MAP_ANIM_DURATION = 400; // ms
+
+// 点击下钻状态
+let mapSelectedDistrict = null;  // 当前选中区（null = 无）
 
 const SZ_BBOX = { minLon:113.7515, maxLon:114.6285, minLat:22.3963, maxLat:22.8617 };
 const SZ_CENTER_LAT = 22.6290;
@@ -1221,10 +1248,11 @@ function initCanvasMap() {
       if (le) { le.innerHTML = '<span style="color:red;font-weight:bold;">Error: Canvas element #szLeafletMap not found</span>'; }
       return;
     }
+    mapDPR = window.devicePixelRatio || 1;
     mapCtx = mapCanvas.getContext('2d');
     if (!mapCtx) { console.error('[MAP] Cannot get 2D context'); return; }
 
-    // Parse embedded GeoJSON
+    // Parse embedded GeoJSON (parse once, cache centroid)
     const gj = JSON.parse(SZ_GEOJSON);
     console.log('[MAP] GeoJSON parsed, features:', gj.features.length);
 
@@ -1237,6 +1265,7 @@ function initCanvasMap() {
       key: nameToKey[f.properties.name],
       geomType: f.geometry.type,
       coords: f.geometry.coordinates,
+      centroid: f.properties.centroid || null,
     })).filter(f => f.key);
     console.log('[MAP] geoFeatures parsed:', geoFeatures.length);
 
@@ -1250,12 +1279,27 @@ function initCanvasMap() {
 
     // Bind mouse events
     mapCanvas.addEventListener('mousemove', onMapMouseMove);
+    mapCanvas.addEventListener('mousedown', onMapMouseDown);
+    mapCanvas.addEventListener('mouseup', onMapMouseUp);
+    mapCanvas.addEventListener('mouseleave', onMapMouseLeave);
     mapCanvas.addEventListener('click', onMapClick);
-    mapCanvas.style.cursor = 'crosshair';
+    mapCanvas.addEventListener('wheel', onMapWheel, { passive: false });
+    mapCanvas.addEventListener('dblclick', (e) => { e.preventDefault(); resetMapView(); });
+    mapCanvas.style.cursor = 'grab';
+
+    // Show zoom hint briefly
+    const zoomHint = document.getElementById('mapZoomHint');
+    if (zoomHint) {
+      zoomHint.style.display = 'block';
+      setTimeout(() => { zoomHint.style.display = 'none'; }, 4000);
+    }
+
+    // Listen for window resize to re-apply DPI
+    window.addEventListener('resize', () => { if (mapReady) { renderMap(mapIdx); } });
 
     // Initial render
     updateMap(0);
-    console.log('[MAP] initCanvasMap completed successfully!');
+    console.log('[MAP] initCanvasMap completed successfully! DPR=' + mapDPR);
   } catch(err) {
     console.error('[MAP] FATAL ERROR in initCanvasMap:', err);
     var le = document.getElementById('mapLoading');
@@ -1271,24 +1315,72 @@ function resizeCanvas() {
   if (!mapCanvas) return;
   const parent = mapCanvas.parentElement;
   if (!parent) return;
-  mapCanvas.width  = parent.clientWidth  || 600;
-  mapCanvas.height = 380;
+  // CSS display size
+  const displayW = parent.clientWidth || 600;
+  const displayH = 380;
+  // Backing store size = display × DPR
+  mapCanvas.width  = Math.round(displayW * mapDPR);
+  mapCanvas.height = Math.round(displayH * mapDPR);
+  mapCanvas.style.width  = displayW + 'px';
+  mapCanvas.style.height = displayH + 'px';
+  // Scale context so all drawing uses CSS-pixel coordinates
+  mapCtx.setTransform(mapDPR, 0, 0, mapDPR, 0, 0);
 }
 
 function lonLatToXY(lon, lat, w, h) {
-  const x = (lon - SZ_BBOX.minLon) / (SZ_BBOX.maxLon - SZ_BBOX.minLon) * w;
-  const y = (1 - (lat - SZ_BBOX.minLat) / (SZ_BBOX.maxLat - SZ_BBOX.minLat)) * h;
+  let x = (lon - SZ_BBOX.minLon) / (SZ_BBOX.maxLon - SZ_BBOX.minLon) * w;
+  let y = (1 - (lat - SZ_BBOX.minLat) / (SZ_BBOX.maxLat - SZ_BBOX.minLat)) * h;
+  // Apply zoom + pan
+  x = (x - w / 2) * mapZoomLevel + w / 2 + mapPanX;
+  y = (y - h / 2) * mapZoomLevel + h / 2 + mapPanY;
   return [x, y];
+}
+
+// ============================================================
+//  Catmull-Rom → Bezier smooth curve through polygon points
+// ============================================================
+function drawSmoothPolygon(ctx, points) {
+  if (points.length < 3) {
+    ctx.beginPath();
+    points.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
+    ctx.closePath();
+    return;
+  }
+  const n = points.length;
+  ctx.beginPath();
+  // Start: midpoint between last and first
+  let mx = (points[n - 1][0] + points[0][0]) / 2;
+  let my = (points[n - 1][1] + points[0][1]) / 2;
+  ctx.moveTo(mx, my);
+  for (let i = 0; i < n; i++) {
+    const p0 = points[(i - 1 + n) % n];
+    const p1 = points[i];
+    const p2 = points[(i + 1) % n];
+    const p3 = points[(i + 2) % n];
+    const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+    const endX = (p1[0] + p2[0]) / 2;
+    const endY = (p1[1] + p2[1]) / 2;
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+  }
+  ctx.closePath();
 }
 
 function renderMap(idx) {
   if (!mapCtx || !mapReady) return;
   resizeCanvas();
-  const w = mapCanvas.width, h = mapCanvas.height;
+  const w = mapCanvas.width / mapDPR, h = mapCanvas.height / mapDPR;
 
   // 背景：淡蓝灰
   mapCtx.fillStyle = '#eef3f7';
   mapCtx.fillRect(0, 0, w, h);
+
+  // Smooth polygon rendering with shadow
+  mapCtx.save();
+  mapCtx.imageSmoothingEnabled = true;
+  mapCtx.imageSmoothingQuality = 'high';
 
   // 画所有区
   geoFeatures.forEach(f => {
@@ -1297,69 +1389,166 @@ function renderMap(idx) {
     const val = mapData[mapMetric][f.key] ? mapData[mapMetric][f.key][idx] : null;
     const fillColor = rateToColor(val, mapMetric);
     const isHovered = hitDistrict === f.key;
+    const isSelected = mapSelectedDistrict === f.key;
     const isStudy   = meta.study;
 
-    // 外边框
-    mapCtx.strokeStyle = isHovered ? '#fff' : (isStudy ? '#fff' : '#c8d6e5');
-    mapCtx.lineWidth   = isHovered ? 3 : (isStudy ? 2 : 1);
-
-    // 绘制所有多边形
-    // MultiPolygon coords: [[[lon,lat],[lon,lat]...], [[lon,lat]...]]
     const polygons = f.geomType === 'MultiPolygon' ? f.coords : [f.coords];
     polygons.forEach(polygon => {
       polygon.forEach(linearRing => {
         if (!linearRing || !linearRing.length) return;
-        mapCtx.beginPath();
-        linearRing.forEach((pt, pi) => {
-          const [x, y] = lonLatToXY(pt[0], pt[1], w, h);
-          if (pi === 0) mapCtx.moveTo(x, y);
-          else         mapCtx.lineTo(x, y);
-        });
-        mapCtx.closePath();
-        mapCtx.fillStyle = fillColor;
+        const pts = linearRing.map(pt => lonLatToXY(pt[0], pt[1], w, h));
+
+        // Shadow for study districts
+        if (isStudy) {
+          mapCtx.save();
+          mapCtx.shadowColor = isHovered || isSelected ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.15)';
+          mapCtx.shadowBlur = isHovered || isSelected ? 14 : 6;
+          mapCtx.shadowOffsetX = isHovered || isSelected ? 2 : 0;
+          mapCtx.shadowOffsetY = isHovered || isSelected ? 2 : 1;
+          drawSmoothPolygon(mapCtx, pts);
+          mapCtx.fillStyle = fillColor;
+          mapCtx.fill();
+          mapCtx.restore();
+        }
+
+        // Main fill
+        drawSmoothPolygon(mapCtx, pts);
+        // Gradient fill for study districts
+        if (isStudy && val !== null && val !== undefined) {
+          const bounds = getPolygonBounds(pts);
+          const gradient = mapCtx.createLinearGradient(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+          gradient.addColorStop(0, fillColor);
+          gradient.addColorStop(1, adjustBrightness(fillColor, -15));
+          mapCtx.fillStyle = gradient;
+        } else {
+          mapCtx.fillStyle = fillColor;
+        }
         mapCtx.fill();
+
+        // Border
+        mapCtx.strokeStyle = isHovered || isSelected ? '#fff' : (isStudy ? 'rgba(255,255,255,0.9)' : '#c8d6e5');
+        mapCtx.lineWidth = (isHovered || isSelected) ? 2.5 / mapZoomLevel : (isStudy ? 1.5 / mapZoomLevel : 0.8 / mapZoomLevel);
         mapCtx.stroke();
       });
     });
 
-    // 研究区（福田/罗湖/坪山）标注区名
-    if (isStudy) {
-      // 计算区中心（取 centroid 字段）
-      const gj = JSON.parse(SZ_GEOJSON);
-      const feat = gj.features.find(f2 => f2.properties.name === f.name);
-      if (feat && feat.properties.centroid) {
-        const [cx, cy] = lonLatToXY(feat.properties.centroid[0], feat.properties.centroid[1], w, h);
-        const label = window.currentLang === 'zh' ? meta.zh : meta.en;
-        const fontSize = isHovered ? 20 : 17;
+    // 标注区名（使用缓存的centroid）
+    if (f.centroid) {
+      let [cx, cy] = lonLatToXY(f.centroid[0], f.centroid[1], w, h);
+      // 龙岗区形状窄长，centroid靠近边界，需向右下微调
+      if (meta.key === 'longgang') { cx += 80; cy += 50; }
+      const label = window.currentLang === 'zh' ? meta.zh : meta.en;
+      if (isStudy) {
+        const baseFontSize = Math.max(11, 17 / mapZoomLevel);
+        const fontSize = isHovered || isSelected ? baseFontSize + 3 : baseFontSize;
         mapCtx.font = `bold ${fontSize}px 'Times New Roman',sans-serif`;
         mapCtx.textAlign = 'center';
         mapCtx.textBaseline = 'middle';
-
-        // 纯文字绘制，用轻描边保证可读性
-        mapCtx.strokeStyle = '#fff';
-        mapCtx.lineWidth = 4;
+        mapCtx.strokeStyle = 'rgba(255,255,255,0.9)';
+        mapCtx.lineWidth = 3.5 / mapZoomLevel;
         mapCtx.lineJoin = 'round';
         mapCtx.strokeText(label, cx, cy);
-        mapCtx.fillStyle = isHovered ? '#0d47a1' : '#1a3a5c';
+        mapCtx.fillStyle = isHovered || isSelected ? '#0d47a1' : '#1a3a5c';
+        mapCtx.fillText(label, cx, cy);
+      } else {
+        // 非研究区：小字灰色标注
+        const fs = Math.max(8, 11 / mapZoomLevel);
+        mapCtx.font = `${fs}px 'Times New Roman',sans-serif`;
+        mapCtx.textAlign = 'center';
+        mapCtx.textBaseline = 'middle';
+        mapCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+        mapCtx.lineWidth = 2.5 / mapZoomLevel;
+        mapCtx.lineJoin = 'round';
+        mapCtx.strokeText(label, cx, cy);
+        mapCtx.fillStyle = 'rgba(80,90,110,0.65)';
         mapCtx.fillText(label, cx, cy);
       }
     }
   });
 
+  // ── 第二轮：统一画所有区的分隔线（覆盖在填充之上） ──
+  mapCtx.save();
+  mapCtx.setLineDash([]);
+  mapCtx.strokeStyle = 'rgba(60,70,85,0.55)';
+  mapCtx.lineWidth = 1.4 / mapZoomLevel;
+  mapCtx.lineJoin = 'round';
+  mapCtx.imageSmoothingEnabled = true;
+  geoFeatures.forEach(f => {
+    const polygons = f.geomType === 'MultiPolygon' ? f.coords : [f.coords];
+    polygons.forEach(polygon => {
+      polygon.forEach(linearRing => {
+        if (!linearRing || !linearRing.length) return;
+        const pts = linearRing.map(pt => lonLatToXY(pt[0], pt[1], w, h));
+        drawSmoothPolygon(mapCtx, pts);
+        mapCtx.stroke();
+      });
+    });
+  });
+  mapCtx.restore();
+
+  mapCtx.restore();
+
   // 画深圳外框（粗线）
   mapCtx.strokeStyle = '#555';
-  mapCtx.lineWidth = 1.5;
+  mapCtx.lineWidth = 1.2 / mapZoomLevel;
   mapCtx.setLineDash([]);
+
+  // Zoom indicator
+  if (mapZoomLevel !== 1 || mapPanX !== 0 || mapPanY !== 0) {
+    mapCtx.save();
+    mapCtx.font = "11px 'Times New Roman',sans-serif";
+    mapCtx.fillStyle = 'rgba(0,0,0,0.4)';
+    mapCtx.textAlign = 'right';
+    mapCtx.textBaseline = 'top';
+    mapCtx.fillText(`${(mapZoomLevel * 100).toFixed(0)}%`, w - 8, 6);
+    mapCtx.restore();
+  }
+}
+
+function getPolygonBounds(pts) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  pts.forEach(p => {
+    if (p[0] < minX) minX = p[0];
+    if (p[1] < minY) minY = p[1];
+    if (p[0] > maxX) maxX = p[0];
+    if (p[1] > maxY) maxY = p[1];
+  });
+  return { minX, minY, maxX, maxY };
+}
+
+function adjustBrightness(hex, amount) {
+  let r = parseInt(hex.slice(1, 3), 16);
+  let g = parseInt(hex.slice(3, 5), 16);
+  let b = parseInt(hex.slice(5, 7), 16);
+  r = Math.max(0, Math.min(255, r + amount));
+  g = Math.max(0, Math.min(255, g + amount));
+  b = Math.max(0, Math.min(255, b + amount));
+  return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
 }
 
 function onMapMouseMove(e) {
   if (!mapCanvas || !mapReady) return;
   const rect = mapCanvas.getBoundingClientRect();
+
+  // If dragging, update pan
+  if (e.buttons === 1) {
+    const dx = e.clientX - mapDragStartX;
+    const dy = e.clientY - mapDragStartY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      mapIsDragging = true;
+      mapPanX = mapPanStartX + dx;
+      mapPanY = mapPanStartY + dy;
+      renderMap(mapIdx);
+      hideMapTip();
+      return;
+    }
+  }
+
+  // Hover detection
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
-  const w = mapCanvas.width, h = mapCanvas.height;
+  const w = rect.width, h = rect.height;
 
-  // 判断哪个区被悬停
   let found = null;
   geoFeatures.forEach(f => {
     if (!DISTRICT_META[f.key] || !DISTRICT_META[f.key].study) return;
@@ -1379,6 +1568,7 @@ function onMapMouseMove(e) {
   if (found !== hitDistrict) {
     hitDistrict = found;
     renderMap(mapIdx);
+    mapCanvas.style.cursor = found ? 'pointer' : 'grab';
     if (found) showMapTip(e, found);
     else       hideMapTip();
   } else if (found) {
@@ -1386,14 +1576,122 @@ function onMapMouseMove(e) {
   }
 }
 
-function onMapClick(e) {
-  if (!mapCanvas || !mapReady || !hitDistrict) return;
+function onMapMouseDown(e) {
+  if (!mapCanvas || !mapReady) return;
+  mapIsDragging = false;
+  mapDragStartX = e.clientX;
+  mapDragStartY = e.clientY;
+  mapPanStartX = mapPanX;
+  mapPanStartY = mapPanY;
+  mapCanvas.style.cursor = 'grabbing';
+}
+
+function onMapMouseUp(e) {
+  if (!mapCanvas || !mapReady) return;
+  mapCanvas.style.cursor = hitDistrict ? 'pointer' : 'grab';
+  // mapIsDragging is set in onMapMouseMove when distance > 3px
+  // Don't reset it here so onMapClick can check it
+}
+
+function onMapMouseLeave(e) {
+  if (!mapCanvas || !mapReady) return;
+  mapCanvas.style.cursor = 'grab';
+  hitDistrict = null;
+  hideMapTip();
+  if (mapIsDragging) {
+    mapIsDragging = false;
+    renderMap(mapIdx);
+  }
+}
+
+function onMapWheel(e) {
+  e.preventDefault();
+  if (!mapCanvas || !mapReady) return;
   const rect = mapCanvas.getBoundingClientRect();
-  onMapMouseMove(e);
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  const newZoom = Math.max(1, Math.min(5, mapZoomLevel * zoomFactor));
+  const scale = newZoom / mapZoomLevel;
+
+  // Zoom toward mouse: pan adjusts so the point under cursor stays fixed
+  mapPanX = mx - scale * (mx - mapPanX);
+  mapPanY = my - scale * (my - mapPanY);
+
+  mapZoomLevel = newZoom;
+  renderMap(mapIdx);
+}
+
+function onMapClick(e) {
+  if (!mapCanvas || !mapReady) return;
+  if (mapIsDragging) { mapIsDragging = false; return; }
+  if (!hitDistrict) {
+    // Clicked empty area → deselect + reset zoom
+    mapSelectedDistrict = null;
+    resetMapView();
+    return;
+  }
+  // Toggle selection on study districts
+  mapSelectedDistrict = (mapSelectedDistrict === hitDistrict) ? null : hitDistrict;
+  if (mapSelectedDistrict) {
+    showDistrictDetail(e, mapSelectedDistrict);
+  } else {
+    hideMapTip();
+  }
+  renderMap(mapIdx);
+}
+
+function resetMapView() {
+  mapZoomLevel = 1;
+  mapPanX = 0;
+  mapPanY = 0;
+  mapSelectedDistrict = null;
+  renderMap(mapIdx);
+}
+
+function showDistrictDetail(evt, key) {
+  const idx = mapIdx;
+  const meta = DISTRICT_META[key];
+  const name = window.currentLang === 'zh' ? meta.zh : meta.en;
+  const t = I18N[window.currentLang];
+
+  // Build 11-month trend data
+  const months_t = months.map((m, i) => {
+    const d = mapData.dual[key][i];
+    const n = mapData.npos[key][i];
+    const ic = mapData.ic[key][i];
+    return { month: m, dual: d, npos: n, ic: ic };
+  });
+
+  const fmt = v => v === null ? '--' : v.toFixed(1);
+  const rows = months_t.map(d =>
+    `<tr><td style="padding:2px 8px;font-size:11px;border-bottom:1px solid rgba(255,255,255,.15);">${d.month}</td>
+         <td style="padding:2px 6px;font-size:11px;text-align:right;border-bottom:1px solid rgba(255,255,255,.15);">${fmt(d.dual)}%</td>
+         <td style="padding:2px 6px;font-size:11px;text-align:right;border-bottom:1px solid rgba(255,255,255,.15);">${fmt(d.npos)}%</td>
+         <td style="padding:2px 6px;font-size:11px;text-align:right;border-bottom:1px solid rgba(255,255,255,.15);">${fmt(d.ic)}%</td></tr>`
+  ).join('');
+
+  const dualLabel = t.map_dual_tip  || 'Dual';
+  const nposLabel = t.map_npos_tip  || 'N Gene';
+  const icLabel   = t.map_ic_tip    || 'IC';
+
+  const tip = document.getElementById('mapTooltip');
+  tip.innerHTML = `
+    <div style="font-weight:700;font-size:13px;margin-bottom:8px;">${name}</div>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr style="font-size:10px;color:rgba(255,255,255,.7);"><td></td><td style="text-align:right;padding:2px 6px;">${dualLabel}</td><td style="text-align:right;padding:2px 6px;">${nposLabel}</td><td style="text-align:right;padding:2px 6px;">${icLabel}</td></tr>
+      ${rows}
+    </table>
+    <div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:6px;text-align:center;">${t.map_click_outside || 'Click outside to close'}</div>
+  `;
+  tip.style.display = 'block';
+  tip.style.minWidth = '220px';
+  moveTip(evt);
 }
 
 function pointInPolygon(px, py, ring, w, h) {
-  // ray casting algorithm
+  // ray casting algorithm (w, h in CSS pixels)
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = lonLatToXY(ring[i][0], ring[i][1], w, h);
@@ -1406,13 +1704,45 @@ function pointInPolygon(px, py, ring, w, h) {
 }
 
 function updateMap(idx) {
-  mapIdx = idx;
-  if (!mapReady) return;
-  renderMap(idx);
+  if (idx === mapIdx && mapAnimProgress >= 1) return; // no-op
+  const prevIdx = mapIdx;
 
+  // Cancel any running animation
+  if (mapAnimFrame) { cancelAnimationFrame(mapAnimFrame); mapAnimFrame = null; }
+
+  // If same frame or instant render needed
+  if (!mapReady) { mapIdx = idx; return; }
+
+  // Start transition animation
+  mapAnimFromIdx = prevIdx;
+  mapAnimToIdx = idx;
+  mapAnimProgress = 0;
+  const startTime = performance.now();
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    mapAnimProgress = Math.min(1, elapsed / MAP_ANIM_DURATION);
+    // Ease in-out cubic
+    const t = mapAnimProgress < 0.5
+      ? 4 * mapAnimProgress * mapAnimProgress * mapAnimProgress
+      : 1 - Math.pow(-2 * mapAnimProgress + 2, 3) / 2;
+
+    // Interpolate data for each district and render
+    mapIdx = idx; // target index for label/card updates
+    renderMapInterpolated(mapAnimFromIdx, mapAnimToIdx, t);
+
+    if (mapAnimProgress < 1) {
+      mapAnimFrame = requestAnimationFrame(animate);
+    } else {
+      mapAnimFrame = null;
+      mapIdx = idx;
+      renderMap(idx);
+    }
+  }
+  mapAnimFrame = requestAnimationFrame(animate);
+
+  // Update sidebar elements immediately (they don't animate)
   const t = I18N[window.currentLang];
-
-  // 数据卡
   const cards = document.getElementById('mapDataCards');
   if (cards) {
     const regions = [
@@ -1435,12 +1765,145 @@ function updateMap(idx) {
     }).join('');
   }
 
-  // 月份标签
   const ml = document.getElementById('mapMonthLabel');
   if (ml) ml.textContent = months[idx];
-
-  // 滑块同步
   document.getElementById('mapSlider').value = idx;
+}
+
+function renderMapInterpolated(fromIdx, toIdx, t) {
+  if (!mapCtx || !mapReady) return;
+  resizeCanvas();
+  const w = mapCanvas.width / mapDPR, h = mapCanvas.height / mapDPR;
+
+  mapCtx.fillStyle = '#eef3f7';
+  mapCtx.fillRect(0, 0, w, h);
+
+  mapCtx.save();
+  mapCtx.imageSmoothingEnabled = true;
+  mapCtx.imageSmoothingQuality = 'high';
+
+  geoFeatures.forEach(f => {
+    const meta = DISTRICT_META[f.key];
+    if (!meta) return;
+    const isStudy = meta.study;
+
+    // Interpolate value
+    const valFrom = mapData[mapMetric][f.key] ? mapData[mapMetric][f.key][fromIdx] : null;
+    const valTo   = mapData[mapMetric][f.key] ? mapData[mapMetric][f.key][toIdx] : null;
+    let val;
+    if (valFrom === null && valTo === null) val = null;
+    else if (valFrom === null) val = valTo * t;
+    else if (valTo === null) val = valFrom * (1 - t);
+    else val = valFrom + (valTo - valFrom) * t;
+
+    const fillColor = rateToColor(val, mapMetric);
+    const isHovered = hitDistrict === f.key;
+    const isSelected = mapSelectedDistrict === f.key;
+
+    const polygons = f.geomType === 'MultiPolygon' ? f.coords : [f.coords];
+    polygons.forEach(polygon => {
+      polygon.forEach(linearRing => {
+        if (!linearRing || !linearRing.length) return;
+        const pts = linearRing.map(pt => lonLatToXY(pt[0], pt[1], w, h));
+
+        if (isStudy) {
+          mapCtx.save();
+          mapCtx.shadowColor = isHovered || isSelected ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.15)';
+          mapCtx.shadowBlur = isHovered || isSelected ? 14 : 6;
+          mapCtx.shadowOffsetX = isHovered || isSelected ? 2 : 0;
+          mapCtx.shadowOffsetY = isHovered || isSelected ? 2 : 1;
+          drawSmoothPolygon(mapCtx, pts);
+          mapCtx.fillStyle = fillColor;
+          mapCtx.fill();
+          mapCtx.restore();
+        }
+
+        drawSmoothPolygon(mapCtx, pts);
+        if (isStudy && val !== null && val !== undefined) {
+          const bounds = getPolygonBounds(pts);
+          const gradient = mapCtx.createLinearGradient(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+          gradient.addColorStop(0, fillColor);
+          gradient.addColorStop(1, adjustBrightness(fillColor, -15));
+          mapCtx.fillStyle = gradient;
+        } else {
+          mapCtx.fillStyle = fillColor;
+        }
+        mapCtx.fill();
+
+        mapCtx.strokeStyle = isHovered || isSelected ? '#fff' : (isStudy ? 'rgba(255,255,255,0.9)' : '#c8d6e5');
+        mapCtx.lineWidth = (isHovered || isSelected) ? 2.5 / mapZoomLevel : (isStudy ? 1.5 / mapZoomLevel : 0.8 / mapZoomLevel);
+        mapCtx.stroke();
+      });
+    });
+
+    if (f.centroid) {
+      let [cx, cy] = lonLatToXY(f.centroid[0], f.centroid[1], w, h);
+      // 龙岗区形状窄长，centroid靠近边界，需向右下微调
+      if (meta.key === 'longgang') { cx += 80; cy += 50; }
+      const label = window.currentLang === 'zh' ? meta.zh : meta.en;
+      if (isStudy) {
+        const baseFontSize = Math.max(11, 17 / mapZoomLevel);
+        const fontSize = isHovered || isSelected ? baseFontSize + 3 : baseFontSize;
+        mapCtx.font = `bold ${fontSize}px 'Times New Roman',sans-serif`;
+        mapCtx.textAlign = 'center';
+        mapCtx.textBaseline = 'middle';
+        mapCtx.strokeStyle = 'rgba(255,255,255,0.9)';
+        mapCtx.lineWidth = 3.5 / mapZoomLevel;
+        mapCtx.lineJoin = 'round';
+        mapCtx.strokeText(label, cx, cy);
+        mapCtx.fillStyle = isHovered || isSelected ? '#0d47a1' : '#1a3a5c';
+        mapCtx.fillText(label, cx, cy);
+      } else {
+        // 非研究区：小字灰色标注
+        const fs = Math.max(8, 11 / mapZoomLevel);
+        mapCtx.font = `${fs}px 'Times New Roman',sans-serif`;
+        mapCtx.textAlign = 'center';
+        mapCtx.textBaseline = 'middle';
+        mapCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+        mapCtx.lineWidth = 2.5 / mapZoomLevel;
+        mapCtx.lineJoin = 'round';
+        mapCtx.strokeText(label, cx, cy);
+        mapCtx.fillStyle = 'rgba(80,90,110,0.65)';
+        mapCtx.fillText(label, cx, cy);
+      }
+    }
+  });
+
+  // ── 第二轮：统一画所有区的分隔线（覆盖在填充之上） ──
+  mapCtx.save();
+  mapCtx.setLineDash([]);
+  mapCtx.strokeStyle = 'rgba(60,70,85,0.55)';
+  mapCtx.lineWidth = 1.4 / mapZoomLevel;
+  mapCtx.lineJoin = 'round';
+  mapCtx.imageSmoothingEnabled = true;
+  geoFeatures.forEach(f => {
+    const polygons = f.geomType === 'MultiPolygon' ? f.coords : [f.coords];
+    polygons.forEach(polygon => {
+      polygon.forEach(linearRing => {
+        if (!linearRing || !linearRing.length) return;
+        const pts = linearRing.map(pt => lonLatToXY(pt[0], pt[1], w, h));
+        drawSmoothPolygon(mapCtx, pts);
+        mapCtx.stroke();
+      });
+    });
+  });
+  mapCtx.restore();
+
+  mapCtx.restore();
+
+  mapCtx.strokeStyle = '#555';
+  mapCtx.lineWidth = 1.2 / mapZoomLevel;
+  mapCtx.setLineDash([]);
+
+  if (mapZoomLevel !== 1 || mapPanX !== 0 || mapPanY !== 0) {
+    mapCtx.save();
+    mapCtx.font = "11px 'Times New Roman',sans-serif";
+    mapCtx.fillStyle = 'rgba(0,0,0,0.4)';
+    mapCtx.textAlign = 'right';
+    mapCtx.textBaseline = 'top';
+    mapCtx.fillText(`${(mapZoomLevel * 100).toFixed(0)}%`, w - 8, 6);
+    mapCtx.restore();
+  }
 }
 
 function onMapSlider(val) {
@@ -1482,14 +1945,15 @@ function toggleMapPlay() {
       idx = (idx + 1) % months.length;
       updateMap(idx);
       if (idx === months.length - 1) {
-        setTimeout(() => { toggleMapPlay(); }, 600);
+        setTimeout(() => { toggleMapPlay(); }, 800);
       }
-    }, 900);
+    }, 1100); // slightly longer to account for animation duration
   }
 }
 
 function showMapTip(evt, key) {
-  const idx = parseInt(document.getElementById('mapSlider').value);
+  if (mapSelectedDistrict) return; // detail panel is showing
+  const idx = mapIdx;
   const meta = DISTRICT_META[key];
   const name = window.currentLang === 'zh' ? meta.zh : meta.en;
   const dual = mapData.dual[key][idx];
@@ -1506,8 +1970,10 @@ function showMapTip(evt, key) {
     <div>${dualLabel}: <b>${fmt(dual)}</b></div>
     <div>${nposLabel}: <b>${fmt(npos)}</b></div>
     <div>${icLabel}: <b>${fmt(ic)}</b></div>
+    <div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:6px;">${t.map_click_hint || 'Click for details'}</div>
   `;
   tip.style.display = 'block';
+  tip.style.minWidth = '170px';
   moveTip(evt);
 }
 
